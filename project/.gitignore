@@ -1,0 +1,28 @@
+# TACES 项目目录专用忽略规则
+# 依据《设计流程》6.3「禁止提交的内容」
+
+# SQLite 数据库文件（含测试库；库文件由建表脚本重新生成）
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
+
+# Python 缓存与虚拟环境
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# 测试与覆盖率产物
+.pytest_cache/
+.coverage
+htmlcov/
+
+# 导出产物（FR10 生成的报告）
+exports/
+*.pdf
+*.csv
+!docs/**/*.csv
+
+# 实验数据大文件（TC-P5 的 ε 对比实验中间结果）
+tests/experiments/output/

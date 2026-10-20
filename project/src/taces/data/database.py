@@ -70,6 +70,9 @@ class Database:
         try:
             connection.row_factory = sqlite3.Row
             connection.execute("PRAGMA foreign_keys = ON")
+            # REPLACE fires delete guards only with recursive triggers enabled.
+            # Set this on every connection so existing audit rows stay immutable.
+            connection.execute("PRAGMA recursive_triggers = ON")
             for schema, path in self.paths.items():
                 if schema != "main":
                     connection.execute(

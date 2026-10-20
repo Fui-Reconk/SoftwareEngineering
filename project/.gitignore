@@ -4,6 +4,9 @@
 # SQLite 数据库文件（含测试库；库文件由建表脚本重新生成）
 *.db
 *.db-journal
+*.db-mj*
+*.db-wal
+*.db-shm
 *.sqlite
 *.sqlite3
 
@@ -12,6 +15,10 @@ __pycache__/
 *.py[cod]
 .venv/
 venv/
+
+# 测试代码及其配置仅保留本地，不纳入版本库
+/tests/
+/pytest.ini
 
 # 测试与覆盖率产物
 .pytest_cache/

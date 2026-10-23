@@ -7,9 +7,18 @@ from flask import Flask, jsonify
 from werkzeug.exceptions import HTTPException
 
 from taces.data.database import StorageError
+from taces.business.errors import ServiceError
 
 
 def register_error_handlers(app: Flask) -> None:
+    @app.errorhandler(ServiceError)
+    def handle_service_error(error: ServiceError):
+        response = jsonify(error={"code": error.code, "message": error.message})
+        response.status_code = error.status
+        if error.status == 429:
+            response.headers["Retry-After"] = "900"
+        return response
+
     @app.errorhandler(HTTPException)
     def handle_http_error(error: HTTPException):
         status = error.code or 500
@@ -29,7 +38,7 @@ def register_error_handlers(app: Flask) -> None:
         app.logger.warning("Database is not ready: %s", error)
         return jsonify(error={
             "code": "DATABASE_NOT_READY",
-            "message": "数据库尚未就绪，请先运行 init-db 或检查数据库版本。",
+            "message": "数据库尚未就绪，请运行 init-db；已有旧库请运行 upgrade-db。",
         }), 503
 
     @app.errorhandler(sqlite3.Error)

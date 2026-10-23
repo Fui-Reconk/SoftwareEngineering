@@ -1,6 +1,9 @@
 # Web framework: routes, templates, sessions, and JSON responses.
 Flask
 
+# Password hashing, imported directly by the framework-independent auth service.
+Werkzeug
+
 # Test runner for unit, integration, and system tests.
 pytest
 

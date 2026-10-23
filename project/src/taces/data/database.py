@@ -11,11 +11,15 @@ import sqlite3
 from typing import Iterator
 
 
-SCHEMA_VERSION = 1
-TABLES = {
+SCHEMA_VERSION = 2
+CORE_TABLES = {
     "main": {"course", "dimension", "budget_ledger", "audit_log"},
     "identity": {"student", "enroll_code"},
     "evaluation": {"rating", "open_text"},
+}
+TABLES = {
+    **CORE_TABLES,
+    "identity": CORE_TABLES["identity"] | {"account", "auth_session", "login_throttle"},
 }
 SCHEMA_DIR = Path(__file__).with_name("schema")
 
@@ -92,9 +96,19 @@ class Database:
             connection.close()
 
     @staticmethod
-    def _validate_schema(connection: sqlite3.Connection, *, allow_empty: bool = False) -> None:
-        for schema, expected in TABLES.items():
-            version = connection.execute(f"PRAGMA {schema}.user_version").fetchone()[0]
+    def _schema_version(connection: sqlite3.Connection, *, allow_empty: bool = False) -> int:
+        """Recognize complete, matching versions before any schema changes."""
+        versions = {
+            schema: connection.execute(f"PRAGMA {schema}.user_version").fetchone()[0]
+            for schema in TABLES
+        }
+        if len(set(versions.values())) != 1:
+            raise StorageError("Database schema versions are incompatible across files")
+        version = versions["main"]
+        if version not in (0, 1, SCHEMA_VERSION):
+            raise StorageError("Database schema version is incompatible")
+        expected_tables = CORE_TABLES if version == 1 else TABLES
+        for schema, expected in expected_tables.items():
             actual = {
                 row[0]
                 for row in connection.execute(
@@ -104,30 +118,53 @@ class Database:
             }
             if allow_empty and version == 0 and not actual:
                 continue
-            if version != SCHEMA_VERSION or not expected.issubset(actual):
+            if version == 0 or not expected.issubset(actual):
                 raise StorageError("Database schema is not initialized or is incompatible")
+        return version
 
-    def initialize(self) -> None:
-        """Create version-one tables atomically; never drop tables or replace rows."""
-        with self._connect(create=True) as connection:
-            # Keep schema validation and DDL under the same write lock. Avoid
-            # executescript(), which would commit this transaction prematurely.
-            connection.execute("BEGIN IMMEDIATE")
-            self._validate_schema(connection, allow_empty=True)
-            statements = []
-            for schema in TABLES:
-                filename = "metadata.sql" if schema == "main" else f"{schema}.sql"
-                statements.append((SCHEMA_DIR / filename).read_text(encoding="utf-8"))
-                statements.append(f"PRAGMA {schema}.user_version = {SCHEMA_VERSION};")
-            # Execute complete statements individually to retain the active transaction.
+    @classmethod
+    def _validate_schema(cls, connection: sqlite3.Connection) -> None:
+        if cls._schema_version(connection) != SCHEMA_VERSION:
+            raise StorageError("Database schema requires an upgrade; run upgrade-db first")
+
+    @staticmethod
+    def _execute_schema(connection: sqlite3.Connection, filenames: tuple[str, ...]) -> None:
+        # Execute complete statements individually; executescript() would commit
+        # the existing transaction before running the supplied DDL.
+        for filename in filenames:
             buffer = ""
-            for line in "\n".join(statements).splitlines(keepends=True):
+            for line in (SCHEMA_DIR / filename).read_text(encoding="utf-8").splitlines(keepends=True):
                 buffer += line
                 if sqlite3.complete_statement(buffer):
                     connection.execute(buffer)
                     buffer = ""
             if buffer.strip():
                 raise StorageError("Incomplete schema initialization script")
+        for schema in TABLES:
+            connection.execute(f"PRAGMA {schema}.user_version = {SCHEMA_VERSION}")
+
+    def initialize(self) -> None:
+        """Create the current schema atomically; existing versions require upgrade()."""
+        with self._connect(create=True) as connection:
+            # Keep schema validation and DDL under the same write lock.
+            connection.execute("BEGIN IMMEDIATE")
+            version = self._schema_version(connection, allow_empty=True)
+            if version == 1:
+                raise StorageError("Database schema requires an upgrade; run upgrade-db first")
+            if version == 0:
+                self._execute_schema(
+                    connection, ("metadata.sql", "identity.sql", "evaluation.sql", "auth.sql")
+                )
+            self._validate_schema(connection)
+            connection.commit()
+
+    def upgrade(self) -> None:
+        """Migrate a complete version-one database, preserving all existing rows."""
+        with self._connect() as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            version = self._schema_version(connection)
+            if version == 1:
+                self._execute_schema(connection, ("auth.sql",))
             self._validate_schema(connection)
             connection.commit()
 

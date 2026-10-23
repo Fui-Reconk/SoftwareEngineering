@@ -18,6 +18,8 @@ def load_config(overrides: Mapping[str, Any] | None = None) -> dict[str, Any]:
         "MAX_CONTENT_LENGTH": 16 * 1024,
         "TESTING": False,
         "DEBUG": False,
+        "AUTH_SESSION_SECONDS": os.environ.get("TACES_SESSION_SECONDS", "28800"),
+        "AUTH_COOKIE_SECURE": os.environ.get("TACES_COOKIE_SECURE", "false"),
     }
     config.update(overrides or {})
     directory = config["DATA_DIR"]
@@ -44,4 +46,16 @@ def load_config(overrides: Mapping[str, Any] | None = None) -> dict[str, Any]:
     config["PORT"] = port
     if not isinstance(config["HOST"], str) or not config["HOST"].strip():
         raise ValueError("HOST must be a non-empty string")
+    duration = config["AUTH_SESSION_SECONDS"]
+    if isinstance(duration, str) and duration.isascii() and duration.isdecimal():
+        duration = int(duration)
+    if type(duration) is not int or not 60 <= duration <= 86400:
+        raise ValueError("AUTH_SESSION_SECONDS must be an integer in [60, 86400]")
+    config["AUTH_SESSION_SECONDS"] = duration
+    secure = config["AUTH_COOKIE_SECURE"]
+    if isinstance(secure, str) and secure.lower() in {"true", "false"}:
+        secure = secure.lower() == "true"
+    if type(secure) is not bool:
+        raise ValueError("AUTH_COOKIE_SECURE must be true or false")
+    config["AUTH_COOKIE_SECURE"] = secure
     return config

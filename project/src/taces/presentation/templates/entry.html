@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+
+{% block title %}正在进入 · TACES{% endblock %}
+
+{% block content %}
+<p class="entry-note" id="entryNote" role="status">正在进入</p>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/pages/entry.js') }}"></script>
+{% endblock %}

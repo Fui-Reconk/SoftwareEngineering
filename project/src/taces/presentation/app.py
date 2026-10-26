@@ -9,12 +9,11 @@ from taces.business.auth.service import AuthService
 from taces.data.database import Database
 from taces.presentation.cli import register_cli
 from taces.presentation.errors import register_error_handlers
-from taces.presentation.routes.health import health
-from taces.presentation.routes.auth import auth
+from taces.presentation.routes import register as register_blueprints
 
 
 def create_app(config: Mapping[str, Any] | None = None) -> Flask:
-    app = Flask(__name__, static_folder=None, template_folder=None)
+    app = Flask(__name__, static_folder="static", template_folder="templates")
     app.config.from_mapping(load_config(config))
     app.json.ensure_ascii = False
     app.extensions["taces_database"] = Database(
@@ -23,8 +22,7 @@ def create_app(config: Mapping[str, Any] | None = None) -> Flask:
     app.extensions["taces_auth"] = AuthService(
         app.extensions["taces_database"], app.config["AUTH_SESSION_SECONDS"]
     )
-    app.register_blueprint(health, url_prefix="/api")
-    app.register_blueprint(auth, url_prefix="/api")
+    register_blueprints(app)
     register_cli(app)
     register_error_handlers(app)
 

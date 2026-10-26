@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+
+{% block title %}结果看板 · TACES{% endblock %}
+
+{% block content %}
+<div class="board" id="board" data-course="{{ course_id }}">
+  <div class="title-row">
+    <div>
+      <h1 id="courseTitle">结果看板</h1>
+      <p class="sub" id="courseSub"></p>
+    </div>
+    <div class="title-actions">
+      <span class="stamp-box" id="publishState" hidden></span>
+      <button class="btn" type="button" id="exportButton" disabled
+              title="导出接口尚未实现">导出 PDF</button>
+    </div>
+  </div>
+
+  <section class="panel report" id="published" hidden>
+    <div class="report-left">
+      <p class="kpi-label">联合均分 · 1–5 分</p>
+      <p class="answer">
+        <span class="answer-value num" id="pooledMean"></span>
+        <span class="answer-ci" id="interval"></span>
+      </p>
+      <p class="answer-note" id="sampleNote"></p>
+      <p class="finding" id="finding"></p>
+      <div class="dims" id="dims"></div>
+      <p class="caption">色带是 90% 噪声区间；两段一重叠，就读不出先后。</p>
+    </div>
+    <div class="report-right">
+      <div class="chart-head">
+        <h2>评分分布</h2>
+        <span class="meta" id="ratingCount"></span>
+      </div>
+      <div class="chart" id="histogram"></div>
+    </div>
+  </section>
+
+  <section class="panel gated" id="refused" hidden>
+    <div class="gated-main">
+      <p class="gated-title" id="refusedTitle"></p>
+      <p class="gated-text" id="refusedWhy"></p>
+    </div>
+    <dl class="gated-facts" id="refusedFacts"></dl>
+  </section>
+
+  <section class="panel words" id="words" hidden>
+    <header>
+      <h2>开放题高频词</h2>
+      <span class="meta" id="openTextCount"></span>
+    </header>
+    <ul class="wordlist" id="wordlist"></ul>
+    <p class="caption foot">同一份评价的分数和文字不关联，原文不进接口，只出高频词。</p>
+  </section>
+
+  <p class="record" id="record"></p>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/charts.js') }}"></script>
+<script src="{{ url_for('static', filename='js/pages/board.js') }}"></script>
+{% endblock %}

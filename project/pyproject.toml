@@ -1,0 +1,24 @@
+[project]
+name = "taces"
+version = "0.1.0"
+description = "可信匿名评教系统（Trusted Anonymous Course Evaluation System）"
+readme = "README.md"
+authors = [
+    { name = "Fui-Reconk", email = "2569332040@qq.com" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "Flask",
+    "Werkzeug",
+    "pytest",
+    "pytest-cov",
+]
+
+[tool.uv]
+# Run this Flask application through run.py; it is not a distributable package.
+package = false
+
+[[tool.uv.index]]
+name = "tuna"
+url = "https://pypi.tuna.tsinghua.edu.cn/simple"
+default = true

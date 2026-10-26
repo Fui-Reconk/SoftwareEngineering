@@ -73,7 +73,7 @@ FR 编号沿用 SRS 第 8 章，和《设计流程》3.2 的需求清单对得�
 | FR3 | 开放题选填，≤500 字，原文不外发 | `business/submission/` | 应该 |
 | FR4 | 均分、评分分布、维度对比 | `business/stats/` + `business/privacy/` | 必须 |
 | FR5 | n < k 时拒绝出数 | `business/privacy/` 的 `ThresholdGate` | 必须 |
-| FR6 | 按查询扣预算，耗尽后拒绝 | `business/privacy/` 的 `BudgetLedger` | 必须 |
+| FR6 | 按**发布**扣预算（重复查看不扣），耗尽后拒绝新发布 | `business/privacy/` 的 `BudgetLedger` + 发布缓存 | 必须 |
 | FR7 | 管理员配 ε、k、ε_total，即时生效 | `business/config/` | 必须 |
 | FR8 | 开放题词频，不显示原文 | `business/stats/` 的 `word_freq` | 应该 |
 | FR9 | 审计日志查看与筛选 | `business/audit/` | 应该 |
@@ -108,7 +108,7 @@ NFR 里能落到具体写法的几条：
 | P0 | 工程底座 | 应用工厂、`config.py`、数据访问层、8 张表建表脚本 | NFR6、NFR7 | 空库能建表，表结构核对通过 |
 | P1 | 隐私核心 | `PrivacyMechanism`（Laplace 采样、敏感度表）、`ThresholdGate`、`BudgetLedger` | FR5、FR6、NFR2、NFR5 | TC-P1 至 TC-P4 全过 |
 | P2 | 评价提交 | 评价码校验、维度校验、同事务写库并作废码 | FR1、FR2、NFR1 | 无效码、已用码、越界值都被拒；TC-I3 过 |
-| P3 | 聚合发布 | 真实统计量 → 双重闸门 → 加噪 → 截断 → 扣预算 → 留痕 | FR4、FR5、FR6 | 返回加噪值、样本量 n 和剩余预算；拒绝路径也对 |
+| P3 | 聚合发布 | 查发布缓存（命中直接返回，不重新加噪）→ 双重闸门 → 加噪 → 截断 → 写缓存＋扣预算 → 留痕 | FR4、FR5、FR6 | 返回加噪值、样本量 n、剩余预算；重复查看 10 次只扣 1 次；拒绝路径也对 |
 | P4 | 参数配置 | 配 ε、k、ε_total，校验后即时生效 | FR7 | 非法值拒绝；改完新查询确实用新参数 |
 | P5 | 表现层贯通 | 学生端两个页面、教师端看板 | FR1–FR4、NFR3 | TC-E1 端到端跑通 |
 
@@ -134,7 +134,7 @@ NFR 里能落到具体写法的几条：
 1. `requirements.txt` 还没建，内容大概是 `Flask` 加测试用的 `pytest`、`pytest-cov`。
    本机这两个都没装，pip 是 26.0.1，第一步就把这件事做掉。
 2. ε 和 ε_total 的默认值：SRS 附件C 的 Q1 还挂着「待调研确定」，
-   《设计流程》5.1 给的是 ε=0.5、单次查询 ε_cost=0.1。先按设计文档的取值写进配置，
+   《设计流程》5.1 给的是 ε=0.5、单次**发布** ε_cost=0.1（重复查看不扣，见 §2 第 11 条口径）。先按设计文档的取值写进配置，
    注释里标明出处，等调研结果出来再改。
 3. 维度定名和数量：附件C 的 Q3 没定，先按「教学内容 / 教学方法 / 考核方式」三个做。
 4. 表名以 SRS 为准：SRS 第 6 章写的是 `dimension` 和 `audit_log`，

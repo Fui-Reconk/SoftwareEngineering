@@ -29,12 +29,6 @@ def test_missing_table_is_not_reported_as_ready(app, database):
     assert app.test_client().get("/api/ready").status_code == 503
 
 
-def test_missing_route_returns_json(app):
-    response = app.test_client().get("/not-a-route")
-    assert response.status_code == 404
-    assert response.json["error"]["code"] == "NOT_FOUND"
-
-
 def test_method_not_allowed_keeps_allow_header(app):
     response = app.test_client().post("/api/health")
     assert response.status_code == 405
@@ -48,11 +42,13 @@ def test_method_not_allowed_keeps_allow_header(app):
     (BadRequest("secret database path"), 400, "BAD_REQUEST"),
 ])
 def test_error_responses_hide_exception_details(app, error, status, code):
-    @app.get("/test-failure")
+    # 这是 JSON 错误契约的测试，所以要挂在 /api 下；浏览器侧的等价断言在
+    # tests/pages/test_pages.py 里（未知页面给 HTML）。
+    @app.get("/api/test-failure")
     def fail():
         raise error
 
-    response = app.test_client().get("/test-failure")
+    response = app.test_client().get("/api/test-failure")
     assert response.status_code == status
     assert response.json["error"]["code"] == code
     assert "secret database path" not in response.get_data(as_text=True)

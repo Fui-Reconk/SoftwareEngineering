@@ -14,7 +14,7 @@ from taces.presentation.routes.auth import auth
 
 
 def create_app(config: Mapping[str, Any] | None = None) -> Flask:
-    app = Flask(__name__, static_folder=None, template_folder=None)
+    app = Flask(__name__, static_folder="static", template_folder="templates")
     app.config.from_mapping(load_config(config))
     app.json.ensure_ascii = False
     app.extensions["taces_database"] = Database(

@@ -73,6 +73,16 @@
     charged: false,
   };
 
+  const CONFIG = {
+    values: { epsilon: 0.1, k: 5, epsilonTotal: 4.0 },
+    ranges: {
+      epsilon: { min: 0.01, max: 1.0 },
+      k: { min: 3, max: 50 },
+      epsilonTotal: { min: 0.1, max: 20.0 },
+    },
+    units: { epsilon: 'ε', k: '份', epsilonTotal: 'ε' },
+  };
+
   window.MOCK = {
     '/api/auth/login': function (body) {
       if (body && body.password === 'taces2026') return SESSION;
@@ -118,6 +128,19 @@
         return { __error: { status: 422, code: 'INVALID_SUBMISSION', message: '这份评分不完整。' } };
       }
       return { submissionId: 'sub-2026-0001' };
+    },
+    '/api/admin/config': function (body) {
+      if (body && body.values) {
+        const bad = Object.entries(body.values).find(([key, value]) => {
+          const range = CONFIG.ranges[key];
+          return range && (value < range.min || value > range.max);
+        });
+        if (bad) {
+          return { __error: { status: 422, code: 'INVALID_VALUE', message: `${{ epsilon: 'ε', k: 'k', epsilonTotal: '预算总量' }[bad[0]] || bad[0]} 超出允许范围。` } };
+        }
+        return { values: body.values, ranges: CONFIG.ranges, units: CONFIG.units };
+      }
+      return CONFIG;
     },
   };
 })();

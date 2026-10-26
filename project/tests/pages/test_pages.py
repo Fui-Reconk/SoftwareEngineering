@@ -59,3 +59,18 @@ def test_evaluate_page_renders_scale_and_receipt(app):
     assert "开放题" in body
     assert "500" in body
     assert "不能再改" in body
+
+
+def test_config_page_names_three_parameters_and_their_scope(app):
+    body = app.test_client().get("/admin/config").get_data(as_text=True)
+    assert "每次发布 ε" in body
+    assert "出数门槛 k" in body
+    assert "每门课预算总量" in body
+
+
+def test_audit_page_is_read_only(app):
+    body = app.test_client().get("/admin/audit").get_data(as_text=True)
+    assert "查询留痕" in body
+    assert "操作者" in body
+    assert "消耗 ε" in body
+    assert "删除" not in body

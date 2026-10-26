@@ -35,3 +35,8 @@ def student_code():
 @pages.get("/student/evaluate")
 def student_evaluate():
     return render_template("student/evaluate.html")
+
+
+@pages.get("/admin/config")
+def admin_config():
+    return render_template("admin/config.html", shell="staff")

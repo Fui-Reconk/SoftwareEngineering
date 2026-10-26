@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+
+{% block title %}隐私参数 · TACES{% endblock %}
+
+{% block content %}
+<div class="title-row">
+  <div>
+    <h1>隐私参数</h1>
+  </div>
+</div>
+
+<div class="settings" id="settings">
+  <div class="setting" data-key="epsilon">
+    <div class="setting-label">
+      <h2>每次发布 ε</h2>
+      <p>每发布一份新的统计结果消耗的预算。重复查看命中缓存，不再消耗。</p>
+    </div>
+    <div class="setting-panel">
+      <label class="field">
+        <span class="field-label">ε</span>
+        <input class="input" type="number" id="epsilonInput" step="0.01" inputmode="decimal">
+      </label>
+      <p class="field-hint" id="epsilonRange"></p>
+    </div>
+  </div>
+
+  <div class="setting" data-key="k">
+    <div class="setting-label">
+      <h2>出数门槛 k</h2>
+      <p>有效评价少于这个数时，一条统计都不发布。</p>
+    </div>
+    <div class="setting-panel">
+      <label class="field">
+        <span class="field-label">k</span>
+        <input class="input" type="number" id="kInput" step="1" inputmode="numeric">
+      </label>
+      <p class="field-hint" id="kRange"></p>
+    </div>
+  </div>
+
+  <div class="setting" data-key="epsilonTotal">
+    <div class="setting-label">
+      <h2>每门课预算总量</h2>
+      <p>每门课一个学期能花掉的 ε 总量。调小不会把已经发布的作废，也不会退还已用额度。</p>
+    </div>
+    <div class="setting-panel">
+      <label class="field">
+        <span class="field-label">ε 总量</span>
+        <input class="input" type="number" id="epsilonTotalInput" step="0.1" inputmode="decimal">
+      </label>
+      <p class="field-hint" id="epsilonTotalRange"></p>
+    </div>
+  </div>
+
+  <div class="settings-actions">
+    <p class="form-error" id="configError" role="alert" hidden></p>
+    <p class="settings-saved" id="configSaved" hidden>已生效</p>
+    <button class="btn primary" type="button" id="saveConfig">保存</button>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/pages/config.js') }}"></script>
+{% endblock %}

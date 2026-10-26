@@ -30,3 +30,8 @@ def teacher_board(course_id: str):
 @pages.get("/student")
 def student_code():
     return render_template("student/code.html")
+
+
+@pages.get("/student/evaluate")
+def student_evaluate():
+    return render_template("student/evaluate.html")

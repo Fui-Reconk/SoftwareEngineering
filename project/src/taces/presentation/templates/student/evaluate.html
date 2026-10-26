@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+
+{% block title %}请给这门课打分 · TACES{% endblock %}
+{% block body_class %} page-wide{% endblock %}
+
+{% block content %}
+<section class="card card-wide">
+  <h1 id="courseTitle">请给这门课打分</h1>
+  <p class="evaluate-meta" id="courseMeta"></p>
+
+  <form class="form" id="rateForm" novalidate>
+    <div class="scale-rows" id="dimensionRows"></div>
+
+    <label class="field">
+      <span class="field-label">开放题（选填）</span>
+      <textarea class="input textarea" id="openText" name="openText" rows="4"
+                maxlength="500" aria-describedby="charCount"></textarea>
+      <span class="field-hint"><span id="charCount">0</span> / 500</span>
+    </label>
+
+    <p class="form-error" id="rateError" role="alert" hidden></p>
+    <button class="btn primary" type="submit" id="submitRating" disabled>提交</button>
+  </form>
+
+  <p class="hint">分数和文字不关联，原文不会出现在任何给教师的页面上。</p>
+</section>
+
+<section class="card" id="receipt" hidden>
+  <h1>已提交</h1>
+  <p class="receipt-note">这份评价收下了，不能再改。</p>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/pages/evaluate.js') }}"></script>
+{% endblock %}

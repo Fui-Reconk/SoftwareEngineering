@@ -8,7 +8,7 @@
 <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
 {% if shell|default('plain') == 'staff' %}<meta name="csrf-token" content="">{% endif %}
 </head>
-<body class="{% if shell|default('plain') == 'staff' %}app shell-staff{% else %}shell-plain{% endif %}">
+<body class="{% if shell|default('plain') == 'staff' %}app shell-staff{% else %}shell-plain{% endif %}{% block body_class %}{% endblock %}">
 {% if shell|default('plain') == 'staff' %}
   <aside class="sidebar" id="sidebar" aria-label="课程与账号">
     <div class="brand">

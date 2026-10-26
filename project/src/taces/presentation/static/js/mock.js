@@ -113,5 +113,11 @@
         },
       };
     },
+    '/api/submissions': function (body) {
+      if (!body || !body.code || !Array.isArray(body.ratings) || body.ratings.length === 0) {
+        return { __error: { status: 422, code: 'INVALID_SUBMISSION', message: '这份评分不完整。' } };
+      }
+      return { submissionId: 'sub-2026-0001' };
+    },
   };
 })();

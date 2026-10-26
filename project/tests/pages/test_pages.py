@@ -51,3 +51,11 @@ def test_code_page_states_the_three_failures(app):
     assert "已经用过了" in body
     assert "没有这个码" in body
     assert "窗口已关闭" in body
+
+
+def test_evaluate_page_renders_scale_and_receipt(app):
+    body = app.test_client().get("/student/evaluate").get_data(as_text=True)
+    assert "请给这门课打分" in body
+    assert "开放题" in body
+    assert "500" in body
+    assert "不能再改" in body

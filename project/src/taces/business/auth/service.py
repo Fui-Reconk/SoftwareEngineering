@@ -91,7 +91,7 @@ class AuthService:
     @contextmanager
     def _operation(self, token, action, *, write=False):
         try:
-            context = self.database.transaction if write else self.database.read
+            context = self.database.transaction if write else self.database.read_current
             with context() as connection:
                 account = self._authenticate(connection, token)
                 yield connection, account

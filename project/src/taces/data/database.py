@@ -169,8 +169,8 @@ class Database:
             connection.commit()
 
     def check_ready(self) -> None:
-        with self.read() as connection:
-            self._validate_schema(connection)
+        with self.read_current():
+            pass
 
     @contextmanager
     def read(self) -> Iterator[sqlite3.Connection]:
@@ -181,6 +181,13 @@ class Database:
                 yield connection
             finally:
                 connection.rollback()
+
+    @contextmanager
+    def read_current(self) -> Iterator[sqlite3.Connection]:
+        """Validate the current schema inside the business operation's snapshot."""
+        with self.read() as connection:
+            self._validate_schema(connection)
+            yield connection
 
     @contextmanager
     def transaction(self) -> Iterator[sqlite3.Connection]:

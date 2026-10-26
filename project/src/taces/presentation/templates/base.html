@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}TACES{% endblock %}</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
+</head>
+<body class="shell-{{ shell|default('plain') }}">
+  <header class="page-top">
+    <span class="brand">TACES</span>
+    <span class="brand-sub">可信匿名评教</span>
+  </header>
+  <main class="page-main">
+    {% block content %}{% endblock %}
+  </main>
+  <script src="{{ url_for('static', filename='js/api.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/mock.js') }}"></script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

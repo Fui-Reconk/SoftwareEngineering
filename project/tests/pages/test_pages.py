@@ -13,3 +13,13 @@ def test_unknown_api_route_still_returns_json(app):
     assert response.status_code == 404
     assert response.mimetype == "application/json"
     assert response.json["error"]["code"] == "NOT_FOUND"
+
+
+def test_login_page_is_html_with_its_copy(app):
+    response = app.test_client().get("/login")
+    assert response.status_code == 200
+    assert response.mimetype == "text/html"
+    body = response.get_data(as_text=True)
+    assert "<h1" in body
+    assert "TACES" in body
+    assert "学生不用登录" in body

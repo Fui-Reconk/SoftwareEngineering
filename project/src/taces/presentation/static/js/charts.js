@@ -64,7 +64,9 @@ window.Charts = (() => {
     const pad = { t: 12, r: 6, b: 26, l: 34 };
     const plotW = w - pad.l - pad.r;
     const plotH = height - pad.t - pad.b;
-    const list = ticks(Math.max(...values));
+    // 全零时也要有个刻度，否则 ticks(0) 会算出 NaN
+    const maxValue = Math.max(...values);
+    const list = ticks(maxValue > 0 ? maxValue : 1);
     const high = list[list.length - 1];
     const svg = node('svg', {
       width: w, height, viewBox: `0 0 ${w} ${height}`, role: 'img',

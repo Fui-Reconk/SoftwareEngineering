@@ -42,7 +42,10 @@
       FIELDS.forEach((key) => {
         inputs[key].value = config.values[key];
         const hint = document.getElementById(`${key}Range`);
-        if (hint && ranges[key]) hint.textContent = describe(key, ranges[key], config.units?.[key]);
+        if (hint && ranges[key]) {
+          const label = { epsilon: 'ε', k: '份', epsilonTotal: 'ε' }[key] || config.units?.[key] || '';
+          hint.textContent = `允许 ${ranges[key].min} 到 ${ranges[key].max} ${label}`.trim();
+        }
       });
     } catch (failure) {
       error.textContent = '参数取不到，刷新再试。';
@@ -50,6 +53,9 @@
       button.disabled = true;
     }
   }
+
+  // 等外壳的登录守卫先跑完，401 由 shell.js 送去登录页，别在这里报「参数取不到」
+  window.SHELL.ready.then(load);
 
   button.addEventListener('click', async () => {
     const values = validate();
@@ -70,5 +76,4 @@
     }
   });
 
-  load();
 })();

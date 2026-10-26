@@ -31,10 +31,11 @@
     [course.code, course.teacher].filter(Boolean).join(' · ');
 
   const ratings = new Map();
+  let submitting = false;
 
   function refresh() {
     const missing = dimensions.filter((name) => !ratings.has(name));
-    submit.disabled = missing.length > 0;
+    submit.disabled = submitting || missing.length > 0;
     submit.textContent = missing.length === 0 ? '提交' : `还差：${missing.join('、')}`;
   }
 
@@ -78,6 +79,7 @@
   form.addEventListener('submit', async (event) => {
     event.preventDefault();
     error.hidden = true;
+    submitting = true;
     submit.disabled = true;
     try {
       await window.API.post('/api/submissions', {
@@ -89,10 +91,16 @@
       document.querySelector('.card-wide').hidden = true;
       document.getElementById('receipt').hidden = false;
     } catch (failure) {
-      error.textContent = failure.status === 409
-        ? '这个码已经用过了，或者窗口关闭了。'
-        : failure.message || '提交失败，再试一次。';
+      if (failure.status === 409) {
+        // 码在提交前被用掉或窗口关了：回上一步，让学生看见原因
+        sessionStorage.removeItem('taces.verify');
+        sessionStorage.setItem('taces.failure', failure.message || '这个码不能用了。');
+        window.location.assign('/student');
+        return;
+      }
+      error.textContent = failure.message || '提交失败，再试一次。';
       error.hidden = false;
+      submitting = false;
       submit.disabled = false;
     }
   });

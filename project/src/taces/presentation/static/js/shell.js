@@ -35,14 +35,14 @@
     courses.forEach((course) => {
       const item = document.createElement('a');
       item.className = 'course';
-      item.href = `/teacher/${encodeURIComponent(course.code)}`;
-      if (course.code === currentCode) item.setAttribute('aria-current', 'true');
+      item.href = `/teacher/${encodeURIComponent(course.course_id)}`;
+      if (course.course_id === currentCode) item.setAttribute('aria-current', 'true');
       const title = document.createElement('span');
       title.className = 'course-title';
-      title.textContent = course.title;
+      title.textContent = course.name;
       const meta = document.createElement('span');
       meta.className = 'course-meta';
-      meta.textContent = course.code;
+      meta.textContent = course.course_id;
       item.append(title, meta);
       courseList.appendChild(item);
     });
@@ -86,6 +86,8 @@
     document.querySelector('meta[name="csrf-token"]').content = session.csrf_token || '';
     renderAccount(session.account);
     if (!sidebar) return;
+    // 审计员没有 courses:own，调 /api/courses 会被 403；侧栏对他不显示课程
+    if (session.account.role === 'auditor') return;
     try {
       const courses = (await window.API.get('/api/courses')).courses || [];
       renderCourses(courses);

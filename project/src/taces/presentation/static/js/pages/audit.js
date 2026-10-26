@@ -7,6 +7,8 @@
   const empty = document.getElementById('auditEmpty');
   const loadMore = document.getElementById('loadMore');
   const courseFilter = document.getElementById('courseFilter');
+  const fromInput = document.getElementById('fromDate');
+  const toInput = document.getElementById('toDate');
   const LIMIT = 50;
   let offset = 0;
   let loading = false;
@@ -18,7 +20,7 @@
         { text: entry.at.replace('T', ' ').slice(0, 16) },
         { text: entry.actor },
         { text: entry.action },
-        { text: entry.target || '—' },
+        { text: entry.target || '-' },
         { text: entry.epsCost ? String(entry.epsCost) : '0', className: 'n num' },
       ];
       cells.forEach((cell) => {
@@ -39,8 +41,8 @@
     courseFilter.appendChild(all);
     courses.forEach((course) => {
       const option = document.createElement('option');
-      option.value = course.code;
-      option.textContent = course.title;
+      option.value = course.course_id;
+      option.textContent = course.name;
       courseFilter.appendChild(option);
     });
   }
@@ -54,6 +56,8 @@
     }
     const params = new URLSearchParams({ limit: String(LIMIT), offset: String(offset) });
     if (courseFilter.value) params.set('course', courseFilter.value);
+    if (fromInput.value) params.set('from', fromInput.value);
+    if (toInput.value) params.set('to', toInput.value);
     try {
       const page = await window.API.get(`/api/admin/audit?${params.toString()}`);
       fillCourses(page.courses);
@@ -73,5 +77,8 @@
 
   loadMore.addEventListener('click', () => load(false));
   courseFilter.addEventListener('change', () => load(true));
-  load(true);
+  fromInput.addEventListener('change', () => load(true));
+  toInput.addEventListener('change', () => load(true));
+  // 等登录守卫先跑完，401 由 shell.js 送去登录页
+  window.SHELL.ready.then(() => load(true));
 })();

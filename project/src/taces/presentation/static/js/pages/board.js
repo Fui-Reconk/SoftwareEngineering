@@ -14,14 +14,20 @@
     if (node) node.textContent = text;
   }
 
+  function stamp(iso) {
+    return iso ? iso.slice(0, 16).replace('T', ' ') : '';
+  }
+
   function drawPublished(data) {
     setText('courseTitle', data.courseTitle);
     setText('courseSub',
-      `${data.courseCode} · 选课 ${f.int(data.enrolled)} 人，有效评价 ${f.int(data.responses)} 份`
-      + `（${f.pct(1)(data.responses / data.enrolled)}）`);
+      [data.term, data.courseCode,
+        `选课 ${f.int(data.enrolled)} 人`,
+        `有效评价 ${f.int(data.responses)} 份（${f.pct(1)(data.responses / data.enrolled)}）`]
+        .filter(Boolean).join(' · '));
 
     const state = el('publishState');
-    state.textContent = '可发布';
+    state.textContent = '已发布';
     state.hidden = false;
 
     setText('pooledMean', f.dec(2)(data.pooledMean));
@@ -31,7 +37,7 @@
     const spread = f.dec(2)(data.spread);
     const interval = f.dec(2)(data.interval);
     setText('finding', data.distinguishable
-      ? `三个维度相差 ${spread} 分，大于 ±${interval} 的噪声区间，最高的是最低的那一档之外。`
+      ? `三个维度相差 ${spread} 分，大于 ±${interval} 的噪声区间，最高与最低的差别不是噪声。`
       : `三个维度相差 ${spread} 分，落在 ±${interval} 的噪声之内，这一学期分不出哪个更弱。`);
 
     // 先显示再画：容器还 hidden 时量不到宽度，SVG 会画成空的。
@@ -55,10 +61,21 @@
       unit: ' 条',
     });
     draw();
-    window.addEventListener('resize', draw, { passive: true });
+    const redrawAll = () => {
+      draw();
+      window.Charts.intervals(dims, {
+        rows: data.dimensions,
+        interval: data.interval,
+        min: 1,
+        max: 5,
+      });
+    };
+    window.addEventListener('resize', redrawAll, { passive: true });
 
     drawWords(data.openText);
-    setText('record', `发布于 ${data.publishedAt.slice(0, 16).replace('T', ' ')}`);
+    setText('record', data.budgetExhausted
+      ? `发布于 ${stamp(data.publishedAt)} · 预算已用完，这份不会再更新`
+      : `发布于 ${stamp(data.publishedAt)}`);
   }
 
   function drawWords(openText) {

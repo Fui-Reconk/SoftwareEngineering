@@ -23,7 +23,7 @@
         note.textContent = '这个账号名下还没有课程。';
         return;
       }
-      window.location.replace(`/teacher/${encodeURIComponent(courses[0].code)}`);
+      window.location.replace(`/teacher/${encodeURIComponent(courses[0].course_id)}`);
       return;
     }
     window.location.replace('/login');

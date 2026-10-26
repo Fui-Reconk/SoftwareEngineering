@@ -20,3 +20,8 @@ def entry():
 @pages.get("/login")
 def login():
     return render_template("auth/login.html")
+
+
+@pages.get("/teacher/<course_id>")
+def teacher_board(course_id: str):
+    return render_template("teacher/board.html", shell="staff", course_id=course_id)

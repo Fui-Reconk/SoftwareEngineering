@@ -1,0 +1,130 @@
+/* 教师看板：把统计接口的数值填进模板留好的槽位，画两张图。
+   区间与「能不能比较」都由接口给，这里不重算差分隐私。 */
+(function () {
+  'use strict';
+
+  const f = window.Charts.fmt;
+  const board = document.getElementById('board');
+  const code = board.dataset.course;
+
+  const el = (id) => document.getElementById(id);
+
+  function setText(id, text) {
+    const node = el(id);
+    if (node) node.textContent = text;
+  }
+
+  function drawPublished(data) {
+    setText('courseTitle', data.courseTitle);
+    setText('courseSub',
+      `${data.courseCode} · 选课 ${f.int(data.enrolled)} 人，有效评价 ${f.int(data.responses)} 份`
+      + `（${f.pct(1)(data.responses / data.enrolled)}）`);
+
+    const state = el('publishState');
+    state.textContent = '可发布';
+    state.hidden = false;
+
+    setText('pooledMean', f.dec(2)(data.pooledMean));
+    setText('interval', `±${f.dec(2)(data.interval)}`);
+    setText('sampleNote', `90% 噪声区间，n=${f.int(data.responses)}`);
+
+    const spread = f.dec(2)(data.spread);
+    const interval = f.dec(2)(data.interval);
+    setText('finding', data.distinguishable
+      ? `三个维度相差 ${spread} 分，大于 ±${interval} 的噪声区间，最高的是最低的那一档之外。`
+      : `三个维度相差 ${spread} 分，落在 ±${interval} 的噪声之内，这一学期分不出哪个更弱。`);
+
+    // 先显示再画：容器还 hidden 时量不到宽度，SVG 会画成空的。
+    el('published').hidden = false;
+    const dims = el('dims');
+    window.Charts.intervals(dims, {
+      rows: data.dimensions,
+      interval: data.interval,
+      min: 1,
+      max: 5,
+    });
+
+    const ratings = data.distribution.reduce((sum, bin) => sum + bin.count, 0);
+    setText('ratingCount', `${f.int(ratings)} 条单项评分`);
+    const histogram = el('histogram');
+    const draw = () => window.Charts.bars(histogram, {
+      labels: data.distribution.map((bin) => `${bin.score} 分`),
+      values: data.distribution.map((bin) => bin.count),
+      format: f.int,
+      height: 208,
+      unit: ' 条',
+    });
+    draw();
+    window.addEventListener('resize', draw, { passive: true });
+
+    drawWords(data.openText);
+    setText('record', `发布于 ${data.publishedAt.slice(0, 16).replace('T', ' ')}`);
+  }
+
+  function drawWords(openText) {
+    if (!openText || !openText.terms || openText.terms.length === 0) return;
+    setText('openTextCount', `${f.int(openText.responses)} 条评语`);
+    const list = el('wordlist');
+    const max = Math.max(...openText.terms.map((term) => term.count));
+    list.textContent = '';
+    openText.terms.forEach((term) => {
+      const row = document.createElement('li');
+      const word = document.createElement('span');
+      word.className = 'w';
+      word.textContent = term.word;
+      const bar = document.createElement('span');
+      bar.className = 'bar';
+      const fill = document.createElement('i');
+      fill.style.width = `${Math.round((term.count / max) * 100)}%`;
+      bar.appendChild(fill);
+      const count = document.createElement('span');
+      count.className = 'c num';
+      count.textContent = f.int(term.count);
+      row.append(word, bar, count);
+      list.appendChild(row);
+    });
+    el('words').hidden = false;
+  }
+
+  function drawRefused(data) {
+    setText('courseTitle', data.courseTitle || '结果看板');
+    setText('courseSub', data.courseCode || '');
+    const state = el('publishState');
+    state.textContent = '不予出数';
+    state.classList.add('refused');
+    state.hidden = false;
+
+    setText('refusedTitle', `还差 ${f.int(data.shortfall)} 份评价才能出数`);
+    setText('refusedWhy',
+      `有效评价 ${f.int(data.sample)} 份，没到 k=${f.int(data.threshold)}。`
+      + '闸门在这一步挡住整页，均值、分布、维度对比和词频都不返回。');
+
+    const facts = el('refusedFacts');
+    facts.textContent = '';
+    [['门槛 k', data.threshold], ['当前 n', data.sample],
+     ['缺口', data.shortfall], ['本次扣费', '0.00']].forEach(([label, value]) => {
+      const dt = document.createElement('dt');
+      dt.textContent = label;
+      const dd = document.createElement('dd');
+      dd.className = 'num';
+      dd.textContent = String(value);
+      facts.append(dt, dd);
+    });
+
+    el('refused').hidden = false;
+  }
+
+  function showError(message) {
+    setText('courseSub', message);
+  }
+
+  window.SHELL.ready
+    .then(() => window.API.get(`/api/courses/${encodeURIComponent(code)}/statistics`))
+    .then((data) => (data.state === 'published' ? drawPublished(data) : drawRefused(data)))
+    .catch((failure) => {
+      if (failure.status === 401) return;
+      showError(failure.status === 404
+        ? '这门课没有找到。'
+        : '这份结果暂时取不到，刷新再试。');
+    });
+})();

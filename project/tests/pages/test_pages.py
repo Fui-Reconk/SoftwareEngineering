@@ -30,3 +30,10 @@ def test_entry_page_hands_off_to_the_browser(app):
     assert response.status_code == 200
     assert response.mimetype == "text/html"
     assert "正在进入" in response.get_data(as_text=True)
+
+
+def test_board_renders_its_blocks(app):
+    body = app.test_client().get("/teacher/SE201-03").get_data(as_text=True)
+    assert "联合均分" in body
+    assert "评分分布" in body
+    assert "开放题高频词" in body

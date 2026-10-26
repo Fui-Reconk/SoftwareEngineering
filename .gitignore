@@ -6,3 +6,10 @@
 
 # 工作区指引：只在本地作为 AI 交接约定使用，不随作业提交
 /AGENT.md
+
+.agents/
+.codex/
+.taste-skill/
+.impeccable/
+
+skills-lock.json

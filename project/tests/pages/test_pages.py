@@ -43,3 +43,11 @@ def test_board_promises_that_text_and_scores_stay_unlinked(app):
     body = app.test_client().get("/teacher/SE201-03").get_data(as_text=True)
     assert "不关联" in body
     assert "原文不进接口" in body
+
+
+def test_code_page_states_the_three_failures(app):
+    body = app.test_client().get("/student").get_data(as_text=True)
+    assert "进入评教" in body
+    assert "已经用过了" in body
+    assert "没有这个码" in body
+    assert "窗口已关闭" in body

@@ -93,5 +93,25 @@
     },
     '/api/courses/SE201-03/statistics': PUBLISHED,
     '/api/courses/GE105-02/statistics': REFUSED,
+    /* 演示用：全 0 当作已用、全 1 当作不存在、全 2 当作窗口关闭，其余都通过。 */
+    '/api/evaluation-codes/verify': function (body) {
+      const code = (body && body.code) || '';
+      if (/^0+$/.test(code)) return { valid: false, reason: 'used' };
+      if (/^1+$/.test(code)) return { valid: false, reason: 'unknown' };
+      if (/^2+$/.test(code)) return { valid: false, reason: 'expired' };
+      return {
+        valid: true,
+        course: {
+          code: 'SE201-03',
+          title: '数据结构',
+          teacher: '李砚秋',
+          dimensions: [
+            { name: '教学内容' },
+            { name: '教学方法' },
+            { name: '考核方式' },
+          ],
+        },
+      };
+    },
   };
 })();

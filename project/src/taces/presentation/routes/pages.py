@@ -25,3 +25,8 @@ def login():
 @pages.get("/teacher/<course_id>")
 def teacher_board(course_id: str):
     return render_template("teacher/board.html", shell="staff", course_id=course_id)
+
+
+@pages.get("/student")
+def student_code():
+    return render_template("student/code.html")

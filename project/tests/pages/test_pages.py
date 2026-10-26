@@ -1,5 +1,7 @@
 """页面路由：浏览器拿 HTML，`/api` 前缀拿 JSON。"""
 
+import re
+
 
 def test_unknown_page_returns_html_for_browser(app):
     response = app.test_client().get("/not-a-route")
@@ -73,4 +75,6 @@ def test_audit_page_is_read_only(app):
     assert "查询留痕" in body
     assert "操作者" in body
     assert "消耗 ε" in body
-    assert "删除" not in body
+    assert "只增不改" in body
+    # 「没有删除入口」这句话本身含「删除」，所以断的是控件，不是字面
+    assert not re.search(r"<(?:button|a)\b[^>]*>\s*删除", body)

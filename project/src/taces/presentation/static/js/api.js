@@ -22,7 +22,8 @@ window.API = (() => {
 
   async function fromMock(path, method, body) {
     await new Promise((resolve) => setTimeout(resolve, MOCK_LATENCY));
-    const entry = window.MOCK ? window.MOCK[path] : undefined;
+    // mock 的键是路径本身，查询串不参与匹配
+    const entry = window.MOCK ? window.MOCK[path.split('?')[0]] : undefined;
     if (entry === undefined) {
       throw new APIError(404, 'NOT_FOUND', '没有这个接口。');
     }

@@ -414,3 +414,20 @@ a:hover { text-decoration: underline; text-underline-offset: 3px; }
 @media (max-width: 860px) {
   .setting { grid-template-columns: minmax(0, 1fr); gap: 12px; padding: 24px 0; }
 }
+
+/* ---------- 审计日志：只读表格 ---------- */
+.inline-field { display: inline-flex; align-items: center; gap: 8px; }
+.select { width: auto; min-width: 160px; height: 32px; padding: 0 8px; }
+.table-wrap { overflow-x: auto; }
+table.audit { width: 100%; border-collapse: collapse; }
+table.audit th {
+  padding: 0 12px 10px; text-align: left;
+  font-size: var(--fs-small); font-weight: 400; color: var(--muted);
+  border-bottom: 1px solid var(--border); white-space: nowrap;
+}
+table.audit td { padding: 12px; font-size: var(--fs-body); border-bottom: 1px solid var(--rule); }
+table.audit th.n, table.audit td.n { text-align: right; }
+table.audit tbody tr:last-child td { border-bottom: 0; }
+.audit-empty { padding: 24px 12px; font-size: var(--fs-body); color: var(--muted); }
+.audit-foot { display: flex; align-items: center; gap: 16px; margin-top: 20px; }
+.audit-foot .caption { margin-left: auto; }

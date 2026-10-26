@@ -40,3 +40,8 @@ def student_evaluate():
 @pages.get("/admin/config")
 def admin_config():
     return render_template("admin/config.html", shell="staff")
+
+
+@pages.get("/admin/audit")
+def admin_audit():
+    return render_template("admin/audit.html", shell="staff")

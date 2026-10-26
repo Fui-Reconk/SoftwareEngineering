@@ -118,12 +118,11 @@ CSRF 值由随机会话值通过 HMAC 派生，不是身份或角色凭证。
 
 ## 本地验证
 
-测试和 `pytest.ini` 按项目约定只保留本地、不随仓库提交。保留测试的工作区可运行：
+测试和 `pytest.ini` 已随 `2c5b44d` 纳入版本库，共享测试不得为单方改动而放宽断言。可运行：
 
 ```powershell
 Set-Location .\project
 .\.venv\Scripts\python.exe -m pytest -q --cov=taces --cov-report=term-missing
 ```
 
-每轮实际结果、未运行项和复核重点记录在仓库根目录的 `assets/REVIEW_HANDOFF.md`。
-该交接文件同样只保留本地；不以历史覆盖率代替当前测试结果。
+实际测试结果、未运行项与审查结论保留在执行日志或提交说明中。由独立 review_agent 子代理审查，确认的问题修复验证后自主提交；不以历史覆盖率冒充本轮重跑。

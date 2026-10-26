@@ -89,7 +89,6 @@ button, input, select, textarea { font: inherit; color: inherit; }
   border-radius: var(--radius-sheet);
 }
 .card h1 { font-size: var(--fs-title); line-height: 1.25; font-weight: 600; letter-spacing: -0.01em; }
-.card-sub { margin-top: 6px; font-size: var(--fs-small); line-height: 19px; color: var(--muted); }
 
 .form { display: grid; gap: 16px; margin-top: 24px; }
 .field { display: grid; gap: 8px; }

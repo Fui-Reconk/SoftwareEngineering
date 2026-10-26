@@ -230,18 +230,18 @@ a:hover { text-decoration: underline; text-underline-offset: 3px; }
   box-shadow: 0 1px 4px rgba(19, 20, 22, 0.18); /* taste-skill-ignore: 悬停读数是浮起来的浮层，不是静止的卡片 */
 }
 
-/* 词频：通栏两列，每列四条。每格自己的条按最大值缩放，
+/* 词频：通栏三列，每列四条。每格自己的条按最大值缩放，
    字和数字就在条的两端，不会隔着九百像素 */
 .words { margin-top: var(--gap); display: flex; flex-direction: column; }
 .caption.foot { margin-top: auto; padding-top: 14px; }
 .wordlist {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   grid-template-rows: repeat(4, 36px);
   grid-auto-flow: column;
-  column-gap: 40px;
+  column-gap: 32px;
 }
-.wordlist li { display: grid; grid-template-columns: 64px minmax(0, 1fr) 44px; gap: 12px; align-items: center; min-height: 36px; }
+.wordlist li { display: grid; grid-template-columns: 48px minmax(0, 1fr) 36px; gap: 10px; align-items: center; min-height: 36px; }
 .wordlist .w { font-size: var(--fs-body); }
 .wordlist .bar { display: block; min-width: 0; }
 .wordlist .bar i { display: block; height: 6px; border-radius: 2px; background: var(--chart-1); }

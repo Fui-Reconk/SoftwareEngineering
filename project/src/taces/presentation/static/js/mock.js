@@ -54,6 +54,10 @@
         { word: '课件', count: 21 },
         { word: '答疑', count: 17 },
         { word: '给分', count: 12 },
+        { word: '板书', count: 10 },
+        { word: '例题', count: 8 },
+        { word: '练习', count: 7 },
+        { word: '反馈', count: 6 },
       ],
     },
   };

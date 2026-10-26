@@ -37,3 +37,9 @@ def test_board_renders_its_blocks(app):
     assert "联合均分" in body
     assert "评分分布" in body
     assert "开放题高频词" in body
+
+
+def test_board_promises_that_text_and_scores_stay_unlinked(app):
+    body = app.test_client().get("/teacher/SE201-03").get_data(as_text=True)
+    assert "不关联" in body
+    assert "原文不进接口" in body

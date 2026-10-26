@@ -10,6 +10,13 @@ from flask import Blueprint, render_template
 pages = Blueprint("pages", __name__)
 
 
+@pages.get("/")
+def entry():
+    # Role-based landing happens in the browser: the session cookie is scoped
+    # to /api, so a page route cannot read who is logged in.
+    return render_template("entry.html")
+
+
 @pages.get("/login")
 def login():
     return render_template("auth/login.html")

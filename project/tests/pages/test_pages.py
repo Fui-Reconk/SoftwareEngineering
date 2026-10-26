@@ -23,3 +23,10 @@ def test_login_page_is_html_with_its_copy(app):
     assert "<h1" in body
     assert "TACES" in body
     assert "学生不用登录" in body
+
+
+def test_entry_page_hands_off_to_the_browser(app):
+    response = app.test_client().get("/")
+    assert response.status_code == 200
+    assert response.mimetype == "text/html"
+    assert "正在进入" in response.get_data(as_text=True)

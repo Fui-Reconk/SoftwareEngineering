@@ -29,5 +29,11 @@
       };
     },
     '/api/auth/me': SESSION,
+    '/api/courses': {
+      courses: [
+        { code: 'SE201-03', title: '数据结构', term: '2025–2026 学年第二学期' },
+        { code: 'GE105-02', title: '软件工程导论', term: '2025–2026 学年第二学期' },
+      ],
+    },
   };
 })();

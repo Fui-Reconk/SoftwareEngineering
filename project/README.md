@@ -62,6 +62,8 @@ uv run python run.py
 | 管理员隐私配置 | `/admin/config` |
 | 管理员/审计员日志 | `/admin/audit` |
 
+管理员侧栏提供“隐私参数 / 查询留痕”，审计员只提供“查询留痕”，教师侧栏列出本人课程。管理员管理配置和审计，不具有教师的课程结果读取权限。品牌与账号退出固定在侧栏顶部/底部，中间导航独立滚动。
+
 `/` 在浏览器端根据账号角色跳转。正式模板位于 `src/taces/presentation/templates/`，页面取数统一经过 `static/js/api.js`，Mock 数据集中在 `static/js/mock.js`。`USE_MOCK=true` 时，页面中的登录、统计、配置和日志均为模拟交互，不代表真实库中的账号或数据。
 
 真实接口入口是 `src/taces/presentation/static/js/api.js`，`USE_MOCK` 默认为 `false`，静态调试时可手动启用Mock。真实登录、Cookie会话与四个启用演示账号的角色跳转已有回归，其他页面边缘交互仍需继续验收。真实后端也可通过HTTP客户端与自动化测试使用，字段及错误码见 [API_CONTRACT.md](docs/API_CONTRACT.md)，账号权限见 [AUTH.md](docs/AUTH.md)。
@@ -100,7 +102,7 @@ Flask 负责表现层，业务与数据层不依赖 Flask。纯隐私计算位�
 ```powershell
 uv run python -m pytest -q --cov=taces --cov-report=term-missing
 uv run python -m pytest -q tests/integration/test_test_data.py
-node --test tests/js/board.test.cjs tests/js/config.test.cjs tests/js/login.test.cjs
+node --test tests/js/board.test.cjs tests/js/config.test.cjs tests/js/login.test.cjs tests/js/shell.test.cjs
 
 # 复核已生成的数据，不改演示库；首次需先生成默认数据集
 uv run python scripts/generate_test_data.py --verify-only tests/experiments/output/testdata

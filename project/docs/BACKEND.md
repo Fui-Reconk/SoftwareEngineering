@@ -201,7 +201,7 @@ Cookie/CSRF/登录限流/密码规则详见 AUTH.md；HTTPS 与代理部署仍�
 ~~~powershell
 uv run python -m pytest -q --cov=taces --cov-report=term-missing --tb=short
 uv run python -m pytest -q tests/integration/test_test_data.py
-node --test tests/js/board.test.cjs tests/js/config.test.cjs tests/js/login.test.cjs
+node --test tests/js/board.test.cjs tests/js/config.test.cjs tests/js/login.test.cjs tests/js/shell.test.cjs
 ~~~
 
 2026-10-27登录故障修复后，最近一次Python全量执行361项全部通过（484.20秒），Node看板/配置/登录回归13项全部通过；登录回归包含真实HTTP服务、Cookie和角色跳转。此前数据工具17项通过；最近一次覆盖率记录来自此前359项全量运行：taces语句覆盖97%（1297语句、42未覆盖），本次361项运行未重新统计覆盖率。

@@ -93,12 +93,18 @@ a:hover { text-decoration: underline; text-underline-offset: 3px; }
 .app { display: grid; grid-template-columns: var(--sidebar-width) minmax(0, 1fr); min-height: 100svh; }
 
 .sidebar {
-  position: sticky; top: 0; height: 100svh; z-index: 20;
-  display: flex; flex-direction: column;
-  padding: 16px 12px; overflow-y: auto;
+  position: sticky; top: 0; height: 100svh; height: 100dvh; z-index: 20;
+  display: grid; grid-template-rows: auto minmax(0, 1fr) auto;
+  padding: 16px 12px; overflow: hidden;
   background: var(--ground);
+}
+.sidebar-scroll {
+  min-height: 0; overflow-y: auto; overflow-x: hidden;
+  overscroll-behavior-y: contain;
+  padding-bottom: 14px;
   scrollbar-width: thin;
 }
+.staff-nav { display: grid; gap: 2px; }
 .brand { display: flex; align-items: center; gap: 10px; padding: 2px 8px 18px; }
 .brand-mark { width: 22px; height: 22px; flex: none; color: var(--chart-1); }
 .brand-text { display: grid; gap: 1px; }
@@ -114,12 +120,13 @@ a:hover { text-decoration: underline; text-underline-offset: 3px; }
   transition: background-color var(--t-hover) ease;
 }
 .course:hover { background: var(--raised); }
-.course[aria-current="true"] { background: var(--active); }
+.course[aria-current] { background: var(--active); }
+.course-title, .course-meta, .who-name { overflow-wrap: anywhere; }
 .course-title { font-size: var(--fs-body); font-weight: 500; }
 .course-meta { font-size: var(--fs-small); color: var(--muted); }
 .course-meta.short { color: var(--warning); }
 
-.bottom { margin-top: auto; display: grid; gap: 10px; padding-top: 14px; border-top: 1px solid var(--border); }
+.bottom { display: grid; gap: 10px; padding-top: 14px; border-top: 1px solid var(--border); background: var(--ground); }
 .who { display: grid; gap: 1px; padding: 0 8px; }
 .who-name { font-size: 13px; font-weight: 500; }
 .who-meta { font-size: 11px; color: var(--muted); }
@@ -278,12 +285,14 @@ a:hover { text-decoration: underline; text-underline-offset: 3px; }
 @media (max-width: 860px) {
   .app { grid-template-columns: minmax(0, 1fr); }
   .sidebar {
-    position: fixed; inset: 0 auto 0 0; width: min(300px, 84vw); height: 100%;
+    position: fixed; inset: 0 auto 0 0; width: min(300px, 84vw); height: 100dvh;
+    padding-bottom: max(16px, env(safe-area-inset-bottom));
     border-right: 1px solid var(--border);
+    visibility: hidden;
     transform: translateX(-101%);
     transition: transform var(--t-ui) var(--ease-out);
   }
-  .sidebar.open { transform: none; }
+  .sidebar.open { transform: none; visibility: visible; }
   .menu-toggle { display: inline-flex; width: 32px; padding: 0; color: var(--muted); }
   .frame { min-height: 100svh; }
   .topbar { padding: 0 16px; }

@@ -10,12 +10,17 @@
 </head>
 <body class="{% if shell|default('plain') == 'staff' %}app shell-staff{% else %}shell-plain{% endif %}{% block body_class %}{% endblock %}">
 {% if shell|default('plain') == 'staff' %}
-  <aside class="sidebar" id="sidebar" aria-label="课程与账号">
+  <aside class="sidebar" id="sidebar" aria-label="工作区与账号">
     <div class="brand">
       <span class="brand-text"><strong>TACES</strong><small>可信匿名评教</small></span>
     </div>
-    <p class="group-label" id="coursesLabel">本学期课程</p>
-    <div class="course-list" role="group" aria-labelledby="coursesLabel" id="courseList"></div>
+    <div class="sidebar-scroll" id="sidebarScroll" tabindex="0" role="region" aria-label="侧栏导航">
+      <nav class="staff-nav" id="staffNav" aria-label="工作区" hidden></nav>
+      <section id="courseSection" hidden>
+        <p class="group-label" id="coursesLabel">本学期课程</p>
+        <nav class="course-list" aria-labelledby="coursesLabel" id="courseList"></nav>
+      </section>
+    </div>
     <div class="bottom">
       <div class="who" id="accountBox"></div>
       <button class="btn ghost" type="button" id="signOut">退出登录</button>
@@ -25,7 +30,7 @@
   <div class="frame">
     <header class="topbar">
       <button class="btn ghost menu-toggle" type="button" id="menuToggle"
-              aria-expanded="false" aria-controls="sidebar" aria-label="展开课程与账号">菜单</button>
+              aria-expanded="false" aria-controls="sidebar" aria-label="展开工作区导航">菜单</button>
       <span class="topbar-context" id="topbarContext"></span>
       <span class="topbar-right"><span class="stamp" id="topbarStamp"></span></span>
     </header>

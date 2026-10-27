@@ -7,6 +7,8 @@
   const backdrop = document.getElementById('backdrop');
   const toggle = document.getElementById('menuToggle');
   const courseList = document.getElementById('courseList');
+  const courseSection = document.getElementById('courseSection');
+  const staffNav = document.getElementById('staffNav');
   const accountBox = document.getElementById('accountBox');
   const currentCode = document.querySelector('[data-course]')?.dataset.course || '';
 
@@ -23,6 +25,9 @@
     document.addEventListener('keydown', (event) => {
       if (event.key === 'Escape' && sidebar.classList.contains('open')) setMenu(false);
     });
+    window.addEventListener('resize', () => {
+      if (window.innerWidth > 860) setMenu(false);
+    });
   }
 
   function toLogin() {
@@ -32,11 +37,15 @@
 
   function renderCourses(courses) {
     courseList.textContent = '';
+    if (courses.length === 0) {
+      courseList.textContent = '还没有分配课程。';
+      return;
+    }
     courses.forEach((course) => {
       const item = document.createElement('a');
       item.className = 'course';
       item.href = `/teacher/${encodeURIComponent(course.course_id)}`;
-      if (course.course_id === currentCode) item.setAttribute('aria-current', 'true');
+      if (course.course_id === currentCode) item.setAttribute('aria-current', 'page');
       const title = document.createElement('span');
       title.className = 'course-title';
       title.textContent = course.name;
@@ -47,6 +56,24 @@
       courseList.appendChild(item);
     });
     courseList.addEventListener('click', () => setMenu(false), { once: true });
+  }
+
+  function renderNavigation(role) {
+    const destinations = role === 'admin'
+      ? [['隐私参数', '/admin/config'], ['查询留痕', '/admin/audit']]
+      : role === 'auditor' ? [['查询留痕', '/admin/audit']] : [];
+    staffNav.textContent = '';
+    destinations.forEach(([label, href]) => {
+      const item = document.createElement('a');
+      item.className = 'course';
+      item.textContent = label;
+      item.href = href;
+      if (window.location.pathname === href) item.setAttribute('aria-current', 'page');
+      staffNav.appendChild(item);
+    });
+    staffNav.hidden = destinations.length === 0;
+    courseSection.hidden = role !== 'teacher';
+    staffNav.addEventListener('click', () => setMenu(false));
   }
 
   function renderAccount(account) {
@@ -86,8 +113,9 @@
     document.querySelector('meta[name="csrf-token"]').content = session.csrf_token || '';
     renderAccount(session.account);
     if (!sidebar) return;
-    // 审计员没有 courses:own，调 /api/courses 会被 403；侧栏对他不显示课程
-    if (session.account.role === 'auditor') return;
+    renderNavigation(session.account.role);
+    // 课程结果只属于任课教师；管理员使用配置/审计导航。
+    if (session.account.role !== 'teacher') return;
     try {
       const courses = (await window.API.get('/api/courses')).courses || [];
       renderCourses(courses);

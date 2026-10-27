@@ -31,7 +31,8 @@
 - 登录与学生页面使用单列壳；教师、配置、审计使用侧栏壳。公共壳来自同一模板。
 - 页面统一通过 `window.API` 取数。`api.js` 的Mock分支与fetch分支返回接口的data部分，错误转换为APIError。
 - fetch分支携带同源Cookie与 `X-TACES-Request: 1`；员工写请求有CSRF值时发送 `X-CSRF-Token`。学生凭评价码提交，不要求员工会话或CSRF。
-- 审计员没有课程列表权限，shell不会对其调用 `/api/courses`。审计筛选项直接由 `/api/admin/audit` 返回。
+- 管理员导航为“隐私参数 / 查询留痕”，可随时返回配置；审计员只显示“查询留痕”。这两种角色的侧栏不请求课程列表，也不显示教师结果入口。教师侧栏请求并显示本人课程，空列表与加载失败分别提示。审计筛选项直接由 `/api/admin/audit` 返回。
+- 侧栏采用品牌、可滚动中部、账号退出三行；外层不滚动，只有中部导航滚动。手机抽屉沿用此结构与动态视口高度，关闭时隐藏内部焦点项；打开状态切回桌面会清除遮罩。
 - `project/demo/` 是正式页面实现前的独立静态原型，只在本地保留，正式运行与验收均不依赖该目录。历史实施计划也只本地保存。
 
 ## 业务展示规则
@@ -54,9 +55,9 @@
 uv sync
 uv run python run.py
 uv run python -m pytest -q tests/pages tests/system/test_entrypoint.py
-node --test tests/js/board.test.cjs tests/js/config.test.cjs tests/js/login.test.cjs
+node --test tests/js/board.test.cjs tests/js/config.test.cjs tests/js/login.test.cjs tests/js/shell.test.cjs
 ```
 
-页面测试检查路由、模板骨架与关键控件；Node回归执行真实配置页JS，并分别用真实后端与Mock验证请求保存回读。登录回归另外执行实际api.js、login.js和entry.js，对接临时库的真实HTTP服务，检查启用账号、错误密码、旧Mock口令及停用账号。它们不等同于所有页面的浏览器联调或当前版本的响应式视觉验收。
+页面测试检查路由、模板骨架与关键控件；Node回归执行真实配置页JS，并分别用真实后端与Mock验证请求保存回读。登录回归另外执行实际api.js、login.js和entry.js，对接临时库的真实HTTP服务，检查启用账号、错误密码、旧Mock口令及停用账号。shell回归覆盖三角色导航、当前页标记、空课程、失败/过期会话及移动抽屉切回桌面。侧栏已在1440/768/390宽度、长课程列表与390×320短屏上测量头尾固定和中部独立滚动；这不等同于全部页面的全面视觉验收。
 
 已通过真实浏览器验证生成数据副本上的教师、管理员与审计员登录和相应页面，以及预算耗尽拒绝；全部启用账号的Cookie会话/角色跳转另有真实HTTP回归。后续仍需覆盖学生完整提交、更多缓存边缘状态、导出按钮及桌面/平板/手机交互。登录故障修复将默认取数切换至真实API，没有修改数据库密码或降低密码散列强度。

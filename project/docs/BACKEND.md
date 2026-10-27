@@ -16,7 +16,8 @@
 | 课程与评价码，第 2b 片 | 已实现管理员课程创建/修改、教师分配、评价窗口与随机评价码批量生成 | 本文第 9 节 |
 | 匿名提交，第3片 | 已实现无会话验码与原子提交，不要求CSRF | business/submission/service.py、routes/submissions.py |
 | 统计发布，第4片 | 已实现阈值、向量噪声、发布缓存、预算原子扣费 | 本文第14节 |
-| 配置查询、导出 | 按后续分段实施 | 本文第9节 |
+| 配置与审计，第5片 | 已实现参数范围校验、每课预算上限和审计筛选查询 | 本文第15节 |
+| 导出 | 下一段实现 | 本文第9节 |
 | 前端 | Flask页面已合入基线，mock开关由前端维护 | [FRONTEND.md](FRONTEND.md) |
 
 需求编号沿用 SRS 的 FR1–FR10、NFR1–NFR7。需求原稿在 class2/assets/docs/，用例在
@@ -98,6 +99,8 @@ metadata.db（main） + identity.db + evaluation.db
 | POST /api/evaluation-codes/verify | 学生评价码，无会话/CSRF | 校验不耗码；200 valid/原因 |
 | POST /api/submissions | 学生评价码，无会话/CSRF | 原子评分写入与耗码，201 submissionId |
 | GET /api/courses/<course_id>/statistics | 课程所属教师 | 门槛拒绝200，发布与预算/审计同事务，缓存免费 |
+| GET/PATCH /api/admin/config | 管理员，PATCH需CSRF | values/ranges/units；非法值422并带field |
+| GET /api/admin/audit | 管理员/审计员 | 已翻译日志、上海时间、分页和独立课程筛选项 |
 
 账号响应仅包含 user_id、username、role、is_active、created_at。接口详情、JSON 字段见 AUTH.md。
 员工账号角色为 admin / teacher / auditor；学生使用匿名评价码，不提供学生注册/登录接口。
@@ -211,7 +214,7 @@ Set-Location .\project
 .\.venv\Scripts\python.exe -m pytest -q --cov=taces --cov-report=term-missing --tb=short
 ~~~
 
-只读校验整理阶段的历史结果：208 passed、0 failed、0 skipped，语句覆盖率98%（569条语句、14条未覆盖）。第2b片完整测试247通过；第3片完整测试275 passed、0 failed、0 skipped，398.81秒；第4片统计发布完整测试296 passed、0 failed、0 skipped，429.66秒。以上业务段未重新统计覆盖率。
+只读校验整理阶段的历史结果：208 passed、0 failed、0 skipped，语句覆盖率98%（569条语句、14条未覆盖）。第2b片完整测试247通过；第3片完整测试275 passed、0 failed、0 skipped，398.81秒；第4片统计发布完整测试296 passed、0 failed、0 skipped，429.66秒。第5片配置/审计完整测试331 passed、0 failed、0 skipped，525.97秒。以上业务段未重新统计覆盖率。
 只读校验阶段保留原有176项断言并新增32项回归；对齐前端与uv提交后的新基线为217项，第2b片新增30项课程/迁移/边界回归。具体命令、红绿过程与未运行项保存在本地执行日志；不再额外生成 reviewer 交接文档。
 每次记录执行目录、命令、通过/失败/跳过、deselected/errors、回归场景和未执行原因。
 
@@ -301,7 +304,7 @@ course_id允许1–64位英文字母、数字、点、短横线、下划线；�
 ## 14. 统计与隐私发布（第4片）
 
 教师GET /api/courses/<id>/statistics必须有statistics:own且当前仍拥有课程；管理员、审计员不能借课程管理权限读取结果。
-默认epsilon=0.1、k=5、每课总预算4.0，均取自privacy_policy；本段尚未开放配置API。
+默认epsilon=0.1、k=5、每课总预算4.0，均取自privacy_policy；管理员可通过配置API修改。
 样本不足返回200 unpublished，包含sample/threshold/shortfall/charged=false，无评分或文本结果。
 已发布结果包含publicationId、charged以及前端所需的interval/spread/distinguishable/budgetExhausted。
 缓存键为课程、course_state.data_version、privacy_policy.revision；相同键重读不采样、不扣费。
@@ -322,3 +325,12 @@ course_id允许1–64位英文字母、数字、点、短横线、下划线；�
 维度噪声后裁剪至[1,5]，pooledMean由这些噪声均值及课程权重后处理。直方图非负化后按公开n归一化、最大余数取整；全部非正时使用公开均匀分配。文本份数裁剪至[0,n]，词频裁剪至该噪声份数。
 interval是90%同时噪声误差界，b为均值噪声尺度：min(4,向上保留两位(b·ln(10d)+0.005))。它不是总体抽样置信区间。spread为展示维度最大值减最小值，只有spread>2interval才distinguishable。
 生产采样来自secrets.SystemRandom，HTTP没有seed或无噪声开关；纯函数测试可注入确定性噪声回调。当前使用浮点逆CDF，未做有限精度形式化审计，不能等同经验证的严格DP实现。
+
+## 15. 配置与审计（第5片）
+
+GET/PATCH /api/admin/config只允许管理员；PATCH还需CSRF。返回values/ranges/units，epsilon范围0.01–1.0，k为整数3–50，epsilonTotal为每课0.1–20.0。预算只接受JSON数值，最多六位小数，拒绝bool/字符串/非有限数；单次epsilon不能超过总量。非法值或未知键422 INVALID_VALUE，error.field标明字段；空请求标为request。
+epsilonTotal明确设置时更新每课总上限和新课程默认值，保留已消费整数微单位；若低于任一已消费金额，整笔拒绝。epsilon/k实际变化才增加策略revision；仅改总上限不使同数据缓存失效。配置、所有课账本、成功审计同事务回滚。
+
+GET /api/admin/audit允许管理员与审计员；教师403。返回entries/next/courses，courses独立查询为[{course_id,name}]，不绕过课程API授权。日志映射固定中文动作、账号用户名和Asia/Shanghai时间；账号操作的目标转换为目标用户名，课程操作转为课程名。历史未知动作显示“历史操作”，不存在的历史账号显示“历史账号”。不返回密码/令牌/评价码/开放题原文。
+支持from/to（YYYY-MM-DD本地日期或带时区ISO时间，最多六位小数秒）、course、limit（默认50，1–100）、offset（0–2147483647）。日期from含当天00:00，日期to含整天；ISO时间to含该时刻，拒绝无时区时间、超出微秒精度和反向范围。按整数UTC微秒比较与倒序，时间相同时按插入顺序倒序；next为下一页offset或null。未知/重复查询键和非法过滤400；查询本身不写审计，不递归留痕。
+预算JSON小数在解析时保留Decimal，先验证原始十进制范围和微单位可表示性，再转整数；不先经float舍入。审计过滤不使用会舍入至毫秒的julianday。

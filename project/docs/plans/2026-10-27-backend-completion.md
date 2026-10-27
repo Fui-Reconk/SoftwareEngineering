@@ -57,9 +57,9 @@
 ### Task 4: 配置与审计查询
 **Files:** business/config/service.py、business/audit/service.py、business/errors.py(field)、errors.py的JSON分支、routes/governance.py、registry；tests/integration/test_governance.py。
 **Interfaces:** config GET/PATCH(values/ranges/units)，PATCH非法422+field；审计GET(entries,next,courses)，from/to本地日期或带时区时间，默认limit50上限100，offset非负。
-- [ ] 写admin/auditor/teacher矩阵、CSRF、每课预算、低于已花费拒绝、策略revision与总预算区别、中文动作/用户名/上海时间/课程筛选和日期分页的红测。
-- [ ] 实现与测试，不更改HTML错误分支；只读审计不产生递归日志。
-- [ ] 全量回归、review-agent、修复、commit。
+- [x] 写admin/auditor/teacher矩阵、CSRF、每课预算、低于已花费拒绝、策略revision与总预算区别、中文动作/用户名/上海时间/课程筛选和日期分页的红测。
+- [x] 实现与测试，不更改HTML错误分支；只读审计不产生递归日志。
+- [x] 全量回归、review-agent、修复、commit。
 
 ### Task 5: 快照导出与整体验证
 **Files:** business/export/service.py、routes/exports.py、registry；依赖清单/锁文件（如需）、tests/integration/test_exports.py、system/test_business_flow.py、docs/BACKEND.md/API_CONTRACT.md。

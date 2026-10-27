@@ -35,7 +35,10 @@ def _html_error(status: int, message: str | None = None):
 def register_error_handlers(app: Flask) -> None:
     @app.errorhandler(ServiceError)
     def handle_service_error(error: ServiceError):
-        response = jsonify(error={"code": error.code, "message": error.message})
+        body = {"code": error.code, "message": error.message}
+        if error.field is not None:
+            body["field"] = error.field
+        response = jsonify(error=body)
         response.status_code = error.status
         if error.status == 429:
             response.headers["Retry-After"] = "900"

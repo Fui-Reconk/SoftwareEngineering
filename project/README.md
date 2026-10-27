@@ -1,144 +1,104 @@
-# TACES 实现代码
+# TACES 可信匿名评教系统
 
-可信匿名评教系统（Trusted Anonymous Course Evaluation System）的源码目录，
-对应《设计流程》6.1 里 `src/` 这类代码配置项。
+学生凭一次性评价码提交匿名评分和选填评语；教师查看课程统计；管理员管理账号、课程和隐私参数；审计员只读查询留痕。
 
-需求看 SRS：`../class2/assets/docs/`（2026-09-29 放宽了依赖约束，现在允许 Flask 等轻量库）。
-**这里目前只有目录骨架和这份计划，一行业务代码都没写。**
+当前已实现课程与发码、匿名提交、差分隐私统计发布、预算与发布缓存、配置、审计及 CSV/PDF 导出。六个功能页面和入口页已由 Flask 提供。**页面默认启用 Mock，尚未切换为读取真实后端；看板导出按钮也尚未接入已实现的导出 API。**
 
-接下来先建 `requirements.txt` 装依赖，然后从 P1 隐私核心动工。
+## 安装与启动
 
----
+以下命令均以 `project/` 为当前目录。需要 Python 3.12+ 和 uv；本项目为应用，通过 `run.py` 启动，不作为 Python 包安装。
 
-## 目录结构
+```powershell
+uv sync --locked
+```
+
+`pyproject.toml` 声明依赖，`uv.lock` 锁定版本；项目显式使用清华 PyPI 镜像。`requirements.txt` 保留直接依赖清单，供 pip 环境使用，版本锁定以 uv 为准。
+
+选择下面一种数据准备方式。
+
+### 本机合成演示
+
+先停止运行中的演示服务，再执行：
+
+```powershell
+uv run --locked python scripts/generate_test_data.py --check --install-demo
+uv run --locked python run.py
+```
+
+生成器默认提供 25 门课、包含 1 万份性能样本的合成评价、演示账号和评价码，校验通过后安装到 `db/`，已有三库先备份。默认输出目录为 `tests/experiments/output/testdata/`，必须不存在；再次生成请指定新的 `--output`，例如 `--output tests/experiments/output/demo-2`。
+
+账号、评价码、覆盖范围、备份与恢复方式见 [scripts/README.md](scripts/README.md)。学生演示码在生成清单的 `codes.student_demo`，有效窗口为生成后 30 天。数据校验在临时副本执行，不消耗演示库中的码或预算。
+
+### 空库开始
+
+```powershell
+uv run --locked python -m flask --app run.py init-db
+uv run --locked python -m flask --app run.py create-admin --username admin
+uv run --locked python run.py
+```
+
+管理员密码通过终端隐藏输入。空库没有默认账号；其他员工账号、课程与评价码由管理员通过 API 创建。应用启动不会隐式建库或发码。已有 v1/v2 库须先停服务并备份三个文件，再执行 `upgrade-db`，不要用删库代替升级；当前结构版本为 v3。
+
+默认监听 [http://127.0.0.1:5000](http://127.0.0.1:5000)。`/api/health` 检查进程，`/api/ready` 检查三库是否就绪。
+
+## 页面与真实接口
+
+| 页面 | 路径 |
+| --- | --- |
+| 员工登录 | `/login` |
+| 学生验码与评分 | `/student`、`/student/evaluate` |
+| 教师看板 | `/teacher/<course_id>` |
+| 管理员隐私配置 | `/admin/config` |
+| 管理员/审计员日志 | `/admin/audit` |
+
+`/` 在浏览器端根据账号角色跳转。正式模板位于 `src/taces/presentation/templates/`，页面取数统一经过 `static/js/api.js`，Mock 数据集中在 `static/js/mock.js`。`USE_MOCK=true` 时，页面中的登录、统计、配置和日志均为模拟交互，不代表真实库中的账号或数据。
+
+切换真实接口的入口是 `src/taces/presentation/static/js/api.js` 的 `USE_MOCK`。目前尚未完成整页真实联调，单独切换该值不代表所有页面行为已验收。真实后端可通过 HTTP 客户端与自动化测试使用，字段及错误码见 [API_CONTRACT.md](docs/API_CONTRACT.md)，账号权限见 [AUTH.md](docs/AUTH.md)。
+
+## 数据与发布规则
+
+- 三个物理 SQLite 文件：`identity.db` 存账号/会话与评价码，`evaluation.db` 存匿名评分/评语，`metadata.db` 存课程、策略、账本、快照与审计；三库共 15 张表。
+- 学生没有登录账号。身份库不保存提交 ID，评价库不保存学生标识、评价码、IP 或精确提交时间。
+- 每门课默认三个等权维度：教学内容、教学方法、考核方式；创建课程时可指定 1–10 个维度。评分必须为整数 1–5，开放题选填且最多 500 字符，原文不通过统计或导出接口外发。
+- 默认每次发布 ε=0.1、k=5、每课总预算4.0；实际参数保存于 `privacy_policy`，管理员可修改。预算以整数微单位记录。
+- **新发布扣费，读取同一发布缓存免费，导出复用快照免费。** 数据版本或 ε/k 策略变化可能触发新发布；预算不足时优先返回已有快照，没有快照则返回未发布状态。
+- 精确参与数为公开信息，k 门槛限制新发布，不撤回已公开的快照；噪声误差界由后端计算。当前浮点 Laplace 实现未经有限精度形式化审计，具体隐私假设见 [BACKEND.md](docs/BACKEND.md)。
+
+## 代码结构
 
 ```text
 project/
-├─ README.md                      ← 本文件
-├─ requirements.txt               ← 待建，依赖只从这里装（SRS 2.5 / 2.6 / NFR7 的约定）
-├─ .gitignore                     ← 挡掉库文件、__pycache__、导出产物
-├─ src/taces/                     包名 taces
-│  ├─ __init__.py                 Flask 应用工厂 create_app()
-│  ├─ config.py                   运行期配置（端口、路径、会话密钥）
-│  ├─ presentation/               表现层（《设计流程》4.2）
-│  │  ├─ routes/                  Flask 蓝图，按角色分 student / teacher / admin
-│  │  ├─ templates/
-│  │  │  ├─ base.html             公共版式
-│  │  │  ├─ student/              评价码校验页、评分页
-│  │  │  ├─ teacher/              结果看板
-│  │  │  └─ admin/                参数配置页、审计日志页
-│  │  └─ static/{css,js}/         样式与图表脚本
-│  ├─ business/                   业务逻辑层
-│  │  ├─ privacy/                 核心：Laplace、k 闸门、预算账本
-│  │  ├─ submission/              评价服务
-│  │  ├─ stats/                   真实统计量（均值、分布、维度对比、词频）
-│  │  ├─ audit/                   查询留痕
-│  │  ├─ config/                  ε、k、预算总量
-│  │  └─ export/                  导出 PDF / CSV
-│  └─ data/                       数据访问层
-├─ tests/                         unit / integration / system / experiments
-├─ db/                            SQLite 库文件和建表脚本，库文件本身不进版本库
-├─ docs/                          设计文档、测试报告、使用手册
-└─ scripts/                       造数据、计时、备份
+├─ run.py                       应用入口
+├─ pyproject.toml / uv.lock      依赖声明与锁定版本
+├─ requirements.txt             pip 直接依赖清单
+├─ src/taces/
+│  ├─ config.py                 运行配置
+│  ├─ presentation/             Flask 路由、CLI、模板与静态资源
+│  ├─ business/                 认证、课程、提交、隐私统计、配置、审计与导出
+│  └─ data/                     SQLite 连接/事务与 schema/ 建表脚本
+├─ tests/                       unit / integration / system / pages / js / experiments
+├─ scripts/                     测试数据生成器与副本校验器
+├─ docs/                        当前架构与接口说明
+└─ db/                          本机运行三库及备份，不入版本库
 ```
 
-有三条约束是硬的，写代码时不能绕：
+Flask 负责表现层，业务与数据层不依赖 Flask。纯隐私计算位于 `business/privacy/mechanism.py`；持久化预算、发布缓存与事务由统计服务和数据层组织。
 
-- `student`、`enroll_code` 放身份库，`rating`、`open_text` 放评价库，两个库物理分开，
-  中间不留任何可关联字段。这是 NFR1，也是中心化差分隐私能成立的前提。
-- `PrivacyMechanism`、`BudgetLedger`、`ThresholdGate` 写成无状态纯函数，不碰数据库、不 import Flask，
-  这样能脱离 Web 层单独跑单元测试（NFR5）。
-- ε、k、ε_total 只在 `business/config/` 和 `config.py` 里定义，改参数不能牵动业务代码（NFR6）。
+## 测试
 
-## 技术栈
+```powershell
+uv run --locked python -m pytest -q --cov=taces --cov-report=term-missing
+uv run --locked python -m pytest -q tests/integration/test_test_data.py
+node --test tests/js/config.test.cjs
 
-Python 3.10+ + Flask + SQLite。不引需要单独部署的数据库或消息队列，SQLite 经内置 `sqlite3` 访问。
-装了哪些库、为什么装，都记在 `requirements.txt` 里（SRS 2.6 的要求）。
+# 复核已生成的数据，不改演示库；首次需先生成默认数据集
+uv run --locked python scripts/generate_test_data.py --verify-only tests/experiments/output/testdata
+```
 
-Flask 只出现在表现层，负责路由、请求解析和 JSON 响应。`business/` 和 `data/` 里不放它，
-否则 NFR5 就没法满足了。
+Python 测试使用临时库；系统测试包含真实本地 HTTP 闭环。JS 回归需要 Node.js，涵盖配置页请求与真实 API/Mock 的衔接。数据校验另检查阈值、评分/文本边界、权限、缓存、预算、导出及性能。
 
-NFR7 的验收方式也跟着改成：干净环境里照 `requirements.txt` 装一遍，Windows 和 Linux 各跑一次端到端。
+已完成 Windows 本地验证；Linux 双平台对照、长期运行与整页真实联调尚未验收。文档更新不代表重新运行全部业务测试，执行记录应注明实际命令与范围。
 
----
+## 版本控制
 
-## 需求落在哪个模块
-
-FR 编号沿用 SRS 第 8 章，和《设计流程》3.2 的需求清单对得上。
-
-| 需求 | 功能 | 位置 | 优先级 |
-| --- | --- | --- | --- |
-| FR1 | 评价码校验进入，无效码、已用码拒绝 | `business/submission/` + `data/` | 必须 |
-| FR2 | 三个维度各打 1–5 分，写进匿名评价表 | `business/submission/` + `data/` | 必须 |
-| FR3 | 开放题选填，≤500 字，原文不外发 | `business/submission/` | 应该 |
-| FR4 | 均分、评分分布、维度对比 | `business/stats/` + `business/privacy/` | 必须 |
-| FR5 | n < k 时拒绝出数 | `business/privacy/` 的 `ThresholdGate` | 必须 |
-| FR6 | 按**发布**扣预算（重复查看不扣），耗尽后拒绝新发布 | `business/privacy/` 的 `BudgetLedger` + 发布缓存 | 必须 |
-| FR7 | 管理员配 ε、k、ε_total，即时生效 | `business/config/` | 必须 |
-| FR8 | 开放题词频，不显示原文 | `business/stats/` 的 `word_freq` | 应该 |
-| FR9 | 审计日志查看与筛选 | `business/audit/` | 应该 |
-| FR10 | 导出 PDF / CSV，数值跟看板一致 | `business/export/` | 可以 |
-
-NFR 里能落到具体写法的几条：
-
-| 需求 | 写代码时要满足什么 |
-| --- | --- |
-| NFR1 完整性 / 安全性 | 两个库分开；接口层任何地方都不返回开放题原文 |
-| NFR2 正确性 | Laplace 采样跟定义一致；输出截断到 [1,5] |
-| NFR3 易用性 | 学生三步内提交完 |
-| NFR4 效率 | 1 万条记录下聚合查询 < 2 s，用 `scripts/` 造数据后计时 |
-| NFR5 可测试性 | 隐私和统计模块脱离 Web 层能测，覆盖率 ≥ 90% |
-| NFR6 可维护性 | 改一次 ε 策略，动的文件数 ≤ 2 |
-| NFR7 可移植性 | 按 `requirements.txt` 装完，两个平台都能跑 |
-
----
-
-## 施工顺序
-
-按 SRS 1.6 的优先级（必须 / 应该 / 可以）排，思路是《设计流程》4.4 那句：
-先把「提交 → 聚合 → 发布」这条最小闭环纵向打通，再横向补管理和审计。
-每个阶段先把测试写完再进下一个。
-
-### 必须项
-
-不实现就没有系统，也兑现不了隐私承诺。
-
-| 序 | 阶段 | 做什么 | 需求 | 怎么算完成 |
-| --- | --- | --- | --- | --- |
-| P0 | 工程底座 | 应用工厂、`config.py`、数据访问层、8 张表建表脚本 | NFR6、NFR7 | 空库能建表，表结构核对通过 |
-| P1 | 隐私核心 | `PrivacyMechanism`（Laplace 采样、敏感度表）、`ThresholdGate`、`BudgetLedger` | FR5、FR6、NFR2、NFR5 | TC-P1 至 TC-P4 全过 |
-| P2 | 评价提交 | 评价码校验、维度校验、同事务写库并作废码 | FR1、FR2、NFR1 | 无效码、已用码、越界值都被拒；TC-I3 过 |
-| P3 | 聚合发布 | 查发布缓存（命中直接返回，不重新加噪）→ 双重闸门 → 加噪 → 截断 → 写缓存＋扣预算 → 留痕 | FR4、FR5、FR6 | 返回加噪值、样本量 n、剩余预算；重复查看 10 次只扣 1 次；拒绝路径也对 |
-| P4 | 参数配置 | 配 ε、k、ε_total，校验后即时生效 | FR7 | 非法值拒绝；改完新查询确实用新参数 |
-| P5 | 表现层贯通 | 学生端两个页面、教师端看板 | FR1–FR4、NFR3 | TC-E1 端到端跑通 |
-
-### 应该项
-
-| 序 | 阶段 | 做什么 | 需求 |
-| --- | --- | --- | --- |
-| P6 | 开放题词频 | 中文词频聚合，只出高频词 | FR3、FR8 |
-| P7 | 审计与留痕 | 查询留痕，按时间和课程筛选，日志只增不改 | FR9 |
-
-### 可以项
-
-| 序 | 阶段 | 做什么 | 需求 |
-| --- | --- | --- | --- |
-| P8 | 结果导出 | 导出 PDF / CSV，导出也留痕 | FR10 |
-| P9 | 非功能验证 | 1 万条计时、ε 对比实验 TC-P5、双平台运行、覆盖率报告 | NFR4、NFR5、NFR7 |
-| P10 | 交付文档 | 设计文档、测试报告、使用手册 | 《设计流程》7.3 |
-
----
-
-## 几个还没定的问题
-
-1. `requirements.txt` 还没建，内容大概是 `Flask` 加测试用的 `pytest`、`pytest-cov`。
-   本机这两个都没装，pip 是 26.0.1，第一步就把这件事做掉。
-2. ε 和 ε_total 的默认值：SRS 附件C 的 Q1 还挂着「待调研确定」，
-   《设计流程》5.1 给的是 ε=0.5、单次**发布** ε_cost=0.1（重复查看不扣，见 §2 第 11 条口径）。先按设计文档的取值写进配置，
-   注释里标明出处，等调研结果出来再改。
-3. 维度定名和数量：附件C 的 Q3 没定，先按「教学内容 / 教学方法 / 考核方式」三个做。
-4. 表名以 SRS 为准：SRS 第 6 章写的是 `dimension` 和 `audit_log`，
-   《设计流程》5.4 写的是 `dim` 和 `audit`，两处不一致，实现跟 SRS 走。
-5. 仓库根的 `.gitignore` 是 `**/assets/*`，`assets/`、`class1/assets/`、`class2/assets/` 都被它忽略掉，
-   包括两个实验的交付文档。目前只有 `project/` 是未跟踪、可以入库的。
-   这个目录下还有一层自己的 `.gitignore`，挡掉 `*.db`、`__pycache__`、导出产物和实验中间结果。
+源码、共享测试、SQL、依赖锁文件和当前维护文档正常跟踪。数据库及备份、测试/导出产物、账号与评价码清单、虚拟环境和缓存不提交。旧静态原型、本地 AI 上下文及历史实施计划仅本地保留。提交格式见 [COMMIT_CONVENTION.md](COMMIT_CONVENTION.md)。

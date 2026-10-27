@@ -1,15 +1,41 @@
-# 各实验的素材与产物（含生成脚本与交付文档），按实验目录归档
-**/assets/*
+# 本地课程素材、手工交付文档及出图工具
+# 只匹配仓库根和实验目录，不屏蔽应用自身的 assets 资源。
+/assets/
+/class*/assets/
 
 # UML 目录：只放本地工具（plantuml.jar）与渲染出的图片，不进版本库
 /UML/
 
 # 工作区指引：只在本地作为 AI 交接约定使用，不随作业提交
 /AGENT.md
+/PRODUCT.md
 
-.agents/
-.codex/
-.taste-skill/
-.impeccable/
+/.agents/
+/.codex/
+/.taste-skill/
+/.impeccable/
+/skills-lock.json
 
-skills-lock.json
+# 历史实施计划与已迁入正式模板的静态原型，仅在本地保留
+/project/docs/plans/
+/project/demo/
+
+# Python 环境、缓存与测试产物（同时覆盖 class1 等项目外目录）
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+
+# 机器专属环境与系统临时文件；示例配置仍可入库
+.env
+.env.*
+!.env.example
+!.env.*.example
+.DS_Store
+Thumbs.db
+Desktop.ini

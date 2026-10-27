@@ -1,53 +1,50 @@
-# 账号与权限：第 2a 片
+# TACES 账号、会话与权限
 
-本片提供教师、管理员、审计员的账号和会话，以及课程元信息的归属校验。
-学生仍凭评价码匿名参与，不建立学生登录账号。课程创建与分配、评价码生成在第 2b 片实现；
-统计、隐私配置、审计查询接口按后续分片交付。本片没有前端页面。
+本模块提供教师、管理员、审计员的账号和会话，以及课程元信息的归属校验。学生凭评价码匿名参与，不建立学生登录账号。课程、匿名提交、统计、配置、审计和导出接口均已实现；整体接口见 [API_CONTRACT.md](API_CONTRACT.md) 与 [BACKEND.md](BACKEND.md)。
 
-本文命令的工作目录均为仓库根目录。
+登录及角色页面已实现，当前默认使用 Mock；页面状态见 [FRONTEND.md](FRONTEND.md)。本文命令均以 `project/` 为工作目录，先执行 `uv sync --locked`。
 
 ## 初始化与升级
 
 全新数据库执行：
 
 ```powershell
-.\project\.venv\Scripts\python.exe -m flask --app .\project\run.py init-db
+uv run --locked python -m flask --app run.py init-db
 ```
 
-已有第 1 片数据库先停止服务并备份三个库文件，再显式执行：
+已有 v1/v2 数据库先停止服务并备份三个库文件，再显式执行：
 
 ```powershell
-.\project\.venv\Scripts\python.exe -m flask --app .\project\run.py upgrade-db
+uv run --locked python -m flask --app run.py upgrade-db
 ```
 
-三库版本同步从 1 升至 2，保留八张业务核心表及其数据，仅在身份库新增 `account`、
-`auth_session`、`login_throttle` 支撑表。DDL 和版本更新同事务提交，失败整体回滚。
+当前三库结构版本为 v3，共15张表。v1升级会补齐三个账号表与四个工作流表；v2升级补齐工作流表，保留已有数据。旧评价窗口与旧码在迁移时默认关闭，须由管理员重新配置窗口并发行新码。DDL 和版本更新同事务提交，失败整体回滚。
 `init-db` 遇到旧版本会拒绝；重复初始化当前版本、重复升级当前版本均保留数据。
 混合版本、未知版本或缺失核心表需要先排查，不能靠删库重建处理。
 
 首次管理员通过终端创建：
 
 ```powershell
-.\project\.venv\Scripts\python.exe -m flask --app .\project\run.py create-admin --username admin
+uv run --locked python -m flask --app run.py create-admin --username admin
 ```
 
 随后隐藏输入密码并确认。密码为 12–128 个字符；用户名为 3–64 位英文字母、数字、
-点、下划线或短横线，存储时转小写，因此大小写不区分。没有默认账号或默认密码。
+点、下划线或短横线，存储时转小写，因此大小写不区分。空库初始化不会创建默认账号或密码；合成演示账号由 [数据生成器](../scripts/README.md) 显式创建。
 此命令仅允许账号表为空时执行；其他账号由已登录的管理员创建。
-Werkzeug 已是 Flask 的依赖，本片将直接使用的 Werkzeug 列入 `requirements.txt`。
+Werkzeug 的直接依赖已列入 `pyproject.toml` 与 `requirements.txt`，具体版本由 `uv.lock` 锁定。
 
 ## 权限
 
-| 角色 | 本片已开放 | 后续服务可复用的权限 |
-| --- | --- | --- |
-| 管理员 `admin` | 创建/列出/修改账号；查看全部课程元信息 | 管理课程、配置隐私参数、读取审计日志 |
-| 教师 `teacher` | 查看本人课程元信息 | 本人课程的统计与导出 |
-| 审计员 `auditor` | 登录、查看自己账号、修改自己密码 | 只读审计日志 |
+| 角色 | 当前权限 |
+| --- | --- |
+| 管理员 `admin` | 创建/列出/修改员工账号；管理课程与发码；配置隐私参数；读取审计日志 |
+| 教师 `teacher` | 查看本人课程元信息、发布/读取本人课程统计、导出本人课程快照 |
+| 审计员 `auditor` | 登录、查看自己账号、修改自己密码、只读审计日志；不能调用课程列表 |
 
 未登录返回 401，角色或课程归属不符返回 403。角色取自服务端账号，客户端提交角色不能改变权限。
 教师的 `user_id` 对应课程的 `teacher_id`；教师账号降为其他角色前须先转移课程。
-已有课程的旧 `teacher_id` 不会自动猜测映射到新账号，需在课程管理阶段显式分配。
-管理员对课程元信息的访问不赋予统计查询权，后续统计服务仍应校验 `statistics:own` 和课程归属。
+已有课程的旧 `teacher_id` 不会自动猜测映射到新账号，需通过课程管理 API 显式分配。
+管理员对课程元信息的访问不赋予统计查询权，统计与导出服务分别校验对应权限；统计服务校验 `statistics:own` 和课程归属。
 
 账号禁用、角色修改、管理员重置密码、本人修改密码会撤销该账号全部会话。
 修改当前账号后需重新登录。系统始终保留至少一个启用的管理员，冲突返回 `409 / LAST_ADMIN`。
@@ -121,8 +118,7 @@ CSRF 值由随机会话值通过 HMAC 派生，不是身份或角色凭证。
 测试和 `pytest.ini` 已随 `2c5b44d` 纳入版本库，共享测试不得为单方改动而放宽断言。可运行：
 
 ```powershell
-Set-Location .\project
-.\.venv\Scripts\python.exe -m pytest -q --cov=taces --cov-report=term-missing
+uv run --locked python -m pytest -q --cov=taces --cov-report=term-missing
 ```
 
-实际测试结果、未运行项与审查结论保留在执行日志或提交说明中。由独立 review_agent 子代理审查，确认的问题修复验证后自主提交；不以历史覆盖率冒充本轮重跑。
+测试命令运行于临时库，不使用本机演示库。实际命令、结果和未运行项记录在执行日志或提交说明中；历史覆盖率不代表本轮重跑。

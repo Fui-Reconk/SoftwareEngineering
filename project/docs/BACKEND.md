@@ -1,9 +1,9 @@
 # TACES 后端实现说明
 
-更新日期：2026-10-27。业务开发基线：754d681；工作树为 .agents/worktrees/backend，与 frontend 同级。
+更新日期：2026-10-27。本文描述已合入主分支的当前实现；本机用途为合成数据演示与自动化测试。
 
-本文说明后端已经实现什么、各层如何协作、数据与权限边界，以及后续怎样分片验收。
-账号接口的字段示例和操作细节见 [AUTH.md](AUTH.md)。文中“待实现”均不代表已有可调用接口。
+本文说明后端能力、层间协作、数据与权限边界，以及已有验证和未验收范围。
+账号操作见 [AUTH.md](AUTH.md)，业务字段见 [API_CONTRACT.md](API_CONTRACT.md)。
 除命令明确切换目录外，文件路径与 PowerShell 命令均相对仓库根目录。
 
 ## 1. 当前状态与依据
@@ -13,35 +13,25 @@
 | 工程底座，第 1 片 | 已实现应用工厂、配置、JSON 错误、健康检查、三库事务 | src/taces/presentation、config.py、data/database.py（相对 project/） |
 | 账号权限，第 2a 片 | 已实现登录、退出、改密、账号管理、角色与课程归属 | src/taces/business/auth、presentation/routes/auth.py（相对 project/） |
 | 数据库 | 当前 schema 版本为 3，三库共 15 张表 | data/database.py 的 SCHEMA_VERSION / TABLES |
-| 课程与评价码，第 2b 片 | 已实现管理员课程创建/修改、教师分配、评价窗口与随机评价码批量生成 | 本文第 9 节 |
+| 课程与评价码，第 2b 片 | 已实现管理员课程创建/修改、教师分配、评价窗口与随机评价码批量生成 | 本文第12节 |
 | 匿名提交，第3片 | 已实现无会话验码与原子提交，不要求CSRF | business/submission/service.py、routes/submissions.py |
 | 统计发布，第4片 | 已实现阈值、向量噪声、发布缓存、预算原子扣费 | 本文第14节 |
 | 配置与审计，第5片 | 已实现参数范围校验、每课预算上限和审计筛选查询 | 本文第15节 |
 | 快照导出，第6片 | 已实现CSV/PDF、指定历史快照、导出留痕 | 本文第16节 |
-| 前端 | Flask页面已合入基线，mock开关由前端维护 | [FRONTEND.md](FRONTEND.md) |
+| 前端 | 六个功能页面和入口页已实现，USE_MOCK=true；导出按钮尚未接API | [FRONTEND.md](FRONTEND.md) |
 
 需求编号沿用 SRS 的 FR1–FR10、NFR1–NFR7。需求原稿在 class2/assets/docs/，用例在
 class3/assets/docs/，实现说明不覆盖或重生成这些手工维护的资料。
 2026-10-26 已确定的预算口径是：**新发布扣预算，读取已有发布结果免费，重新采样视为新发布**。
 v3迁移建立发布缓存agg_result及工作流支撑表；统计服务使用数据版本和策略修订号确定发布缓存。
 
-当前产品与文档中若仍有“每次查询重新加噪并扣费”等旧表述，以已确认的发布口径组织后续实现，
-并在交接中标出冲突；本轮不修改前端演示或其他课程文档。
+本机合成演示三库已由数据生成器安装；数据库与账号/评价码清单不进入版本库。重新生成、备份和恢复见 [测试数据工具](../scripts/README.md)。
 
-## 2. 目标与执行边界
+## 2. 维护边界
 
-目标是让开发者能从本文找到真实代码入口、明确调用契约，按同一规则检查与维护已有后端。
-此前已完成说明整理与只读结构校验。2026-10-27用户授权继续完成后端代码，按第2b/3/4/5/6片逐段实现、测试、使用review-agent skill审查、修复后自主提交。
-执行计划见 [后端业务闭环计划](plans/2026-10-27-backend-completion.md)。前端文件与mock开关不属于本轮修改范围。
+沿用 presentation / business / data 三层结构与原有迁移路径，不引入 ORM 或独立数据库服务。业务及数据层不依赖 Flask，纯隐私计算与聚合可脱离 Web 层验证。持久化预算和发布缓存由业务服务组织事务。
 
-对比过的方式：
-
-- 保留现有三层结构，按可复现问题做小范围整理：本轮采用，能保留已验收的账号行为和迁移路径。
-- 重新搭建后端或先拆一套通用仓储框架：会扩大变更与回归面，当前代码规模没有这项需求。
-- 剩余业务：用户现已明确授权，按分片计划逐段交付，不一次性把全部改动混成一个提交。
-
-完成标准：说明与实际版本、路由、角色、事务一致；确认的问题先有失败回归，再有最小修复；
-本地全量测试通过，执行日志记录命令、数量、未运行项与范围；使用review-agent skill的子代理独立审查，修复验证后自主提交。
+本文是当前实现说明，历史实施计划和本机 AI 上下文只在本地保留。课程 SRS 和手工报告属于独立交付物，更新实现说明不会重生成那些文件。
 
 ## 3. 层次与调用关系
 
@@ -73,7 +63,7 @@ metadata.db（main） + identity.db + evaluation.db
 
 应用工厂通过 app.extensions 注入 taces_database 与 taces_auth；每次数据库操作拥有自己的连接。
 业务层当前直接使用参数化 SQL，不为整理而强行加入 ORM 或通用仓储框架。
-后续统计与隐私计算应保持可脱离 Web 测试；持久化预算/发布则由业务服务组织事务。
+统计与隐私计算可脱离 Web 测试；持久化预算/发布由业务服务组织事务。
 
 ## 4. 已有 API 契约
 
@@ -103,10 +93,10 @@ metadata.db（main） + identity.db + evaluation.db
 | GET /api/admin/audit | 管理员/审计员 | 已翻译日志、上海时间、分页和独立课程筛选项 |
 | GET /api/courses/<course_id>/export | 课程所属教师 | format=csv/pdf，复用已发布快照，导出留痕且免费 |
 
-账号响应仅包含 user_id、username、role、is_active、created_at。接口详情、JSON 字段见 AUTH.md。
+账号响应仅包含 user_id、username、role、is_active、created_at。账号字段见 AUTH.md，业务字段见 API_CONTRACT.md。
 员工账号角色为 admin / teacher / auditor；学生使用匿名评价码，不提供学生注册/登录接口。
 
-| 角色 | 已有授权 | 后续接口的约束 |
+| 角色 | 元信息与账号 | 业务授权 |
 | --- | --- | --- |
 | admin | 管理账号、读取课程元信息 | 管理课程、配置隐私参数、读取审计；不自动取得教师统计权 |
 | teacher | 读取本人课程元信息 | 统计/导出须同时满足角色权限和本人课程归属 |
@@ -114,7 +104,7 @@ metadata.db（main） + identity.db + evaluation.db
 
 所有账号写入都在同一个写事务内重新验证操作者，阻止预认证后被停用/撤权仍然修改。
 最后一个启用管理员不能被停用或降权。教师仍有课程时，改变其角色返回 ROLE_IN_USE。
-已有课程 teacher_id 不自动映射新账号，后续课程分配必须显式处理。
+已有课程 teacher_id 不自动映射新账号，课程分配必须通过管理 API 显式处理。
 
 常用错误：400 INVALID_INPUT、401 UNAUTHENTICATED/INVALID_CREDENTIALS、403 FORBIDDEN/CSRF_REJECTED、
 404 ACCOUNT_NOT_FOUND/COURSE_NOT_FOUND、409 USERNAME_EXISTS/LAST_ADMIN/ROLE_IN_USE、
@@ -152,19 +142,16 @@ DDL、版本号与事务内的数据改变一起回滚；失败可能留下空�
 写入通过 BEGIN IMMEDIATE 串行化，连接关闭时回滚尚未完成的事务。
 初始化/迁移逐条执行完整 SQL，避免 executescript 提前提交已有事务。
 
-现有接口与本轮整理结果：
+读取入口与结构校验：
 
-| 数据入口 | 当前行为 | 本轮目标 |
+| 数据入口 | 当前行为 | 约束 |
 | --- | --- | --- |
 | Database.transaction() | 写锁后校验当前结构，再交给业务，异常回滚 | 保留 |
 | Database.read() | 低层只读快照，不自动检查版本，供迁移诊断读取 | 保留原语义，明确限制 |
 | Database.check_ready() | 通过 read_current 检查版本与表名 | 已与业务读取统一入口 |
 | 账号/课程只读服务 | 已使用 read_current，在同一事务内先验证当前结构 | 保持角色与资源归属约束 |
 
-已在临时库复现：将 main.user_version 改为 99，ready 返回 503，
-但持有效会话读取 auth/me、admin/accounts、courses 仍为 200。
-本轮已在 data 层新增 read_current()，在同一只读事务中完成版本/表名校验后再交付连接；
-业务只读统一使用它，低层 read() 保留给旧库诊断。下列回归与全量验证用于确认实际修复结果。
+业务只读统一使用 read_current()，在同一只读事务内完成版本与表名校验后再交付连接；低层 read() 保留给旧库诊断。未知版本、混合版本或缺表时，业务读取与 ready 一致返回503。该行为由 tests/integration/test_checked_reads.py 覆盖（相对 project/）。
 
 账号/会话变更和成功审计在同一事务中提交，审计失败整体回滚。
 权限拒绝发生后先退出失败业务事务，再独立提交拒绝日志，避免拒绝记录一同回滚。
@@ -185,12 +172,14 @@ DDL、版本号与事务内的数据改变一起回滚；失败可能留下空�
 | TACES_SESSION_SECONDS | 28800 | 整数 60–86400，绝对有效期不滑动续期 |
 | TACES_COOKIE_SECURE | false | true/false；HTTPS 部署应启用 true |
 
-新库在仓库根执行：
+新库从仓库根进入 project/ 执行：
 
 ~~~powershell
-.\project\.venv\Scripts\python.exe -m flask --app .\project\run.py init-db
-.\project\.venv\Scripts\python.exe -m flask --app .\project\run.py create-admin --username admin
-.\project\.venv\Scripts\python.exe .\project\run.py
+Set-Location project
+uv sync --locked
+uv run --locked python -m flask --app run.py init-db
+uv run --locked python -m flask --app run.py create-admin --username admin
+uv run --locked python run.py
 ~~~
 
 create-admin 隐藏输入并确认密码，仅空账号表可首次引导，没有预置密码。
@@ -201,89 +190,70 @@ Invoke-RestMethod http://127.0.0.1:5000/api/health
 Invoke-RestMethod http://127.0.0.1:5000/api/ready
 ~~~
 
-Linux 替换为项目虚拟环境的 bin/python；尚未在 Linux 验收。
+uv 方式无需改写虚拟环境解释器路径；尚未在 Linux 验收。
 每个工作树在project/执行uv sync --locked同步其本地虚拟环境；pyproject.toml、requirements.txt和uv.lock同步维护。tzdata提供Windows时区数据，ReportLab生成PDF，pypdf用于文档回归校验。
 Cookie/CSRF/登录限流/密码规则详见 AUTH.md；HTTPS 与代理部署仍需独立联调。
 
-## 8. 测试与执行记录
+## 8. 测试与验证记录
 
-提交 2c5b44d 已将 tests 和 pytest.ini 纳入版本库，新的 clone 会获得共享测试。新增回归正常跟踪，不能为变绿而放宽对方的断言；数据库、覆盖率与实验输出仍不提交。
-从仓库根进入 project/ 执行：
+共享测试与 pytest.ini 纳入版本库；数据库、覆盖率和实验输出不提交。从 project/ 执行：
 
 ~~~powershell
-Set-Location .\project
-.\.venv\Scripts\python.exe -m pytest -q --cov=taces --cov-report=term-missing --tb=short
+uv run --locked python -m pytest -q --cov=taces --cov-report=term-missing --tb=short
+uv run --locked python -m pytest -q tests/integration/test_test_data.py
+node --test tests/js/config.test.cjs
 ~~~
 
-只读校验整理阶段的历史结果：208 passed、0 failed、0 skipped，语句覆盖率98%（569条语句、14条未覆盖）。第2b片完整测试247通过；第3片完整测试275 passed、0 failed、0 skipped，398.81秒；第4片统计发布完整测试296 passed、0 failed、0 skipped，429.66秒。第5片配置/审计完整测试331 passed、0 failed、0 skipped，525.97秒。以上业务段未重新统计覆盖率。
-只读校验阶段保留原有176项断言并新增32项回归；对齐前端与uv提交后的新基线为217项，第2b片新增30项课程/迁移/边界回归。具体命令、红绿过程与未运行项保存在本地执行日志；不再额外生成 reviewer 交接文档。
-2026-10-27最终业务版本：在project/执行上述覆盖率命令并附--durations=5，344 passed、0 failed、0 skipped，582.05秒；1297条语句、47条未覆盖，总覆盖率96%，隐私机制94%、统计服务96%。各段实际使用review-agent skill；所有提出的可操作问题已用失败回归复现并修复。执行日志与PDF样本保存在本地tests/experiments/output/backend-validation/，不入版本库。
-每次记录执行目录、命令、通过/失败/跳过、deselected/errors、回归场景和未执行原因。
+2026-10-27已记录的执行结果：最近一次全量运行收集359项，359通过，taces语句覆盖97%（1297语句、42未覆盖）；随后补充两项备份连接关闭/安装失败恢复回归，最终数据工具17项全部通过，Node配置回归2项通过。当前完整收集应为361项，但不能把分别执行的结果称为同一次361项全量运行。
 
-按用户指定的 executing-plans 方式执行：先确定文档/设计，再生成有接口与验收命令的任务计划；
-任务开始记录 BASE 和范围，先运行失败回归，再改代码、观察转绿，最后跑完整套件。
-不为人类说明文字编写“包含某段文本”的伪测试；文档做事实、链接、路径与命令检查。
-同一轮内不反复扩大测试，发现新的问题或代码改变时才补相应验证。
-2026-10-27用户授权：使用review-agent skill的子代理独立审查，修复验证后由主代理自主commit，不再等待用户复核；merge/push仍需另行指示。
+数据生成器的默认数据集另有171项检查通过：1万份原始聚合0.151秒，首次完整统计发布0.212秒，均为本机单次观察。生成器在临时副本回放113条HTTP请求语料，源演示码和预算保持不变。详见 [工具说明](../scripts/README.md)。
 
-## 9. 分片与验收口径
+文档与忽略规则更新只核验事实、命令、链接和跟踪边界，不因此重复运行全部业务测试。执行记录须区分收集、实际运行、历史结果和未验收项。
 
-| 片段 | 工作内容 | 完成时必须验证 |
-| --- | --- | --- |
-| 2b 课程与评价码 | 管理员创建/分配课程、维度、随机码与安全分发 | 非教师归属拒绝；仅存码摘要；不建立学生到评价的关联；批量失败回滚 |
-| 3 匿名提交 | 码校验、维度/评分/开放题校验、消费码与写评价 | 失效/重复码拒绝；并发只成功一次；三库回滚；评价无身份字段 |
-| 4 统计与隐私发布 | 均值/分布/维度/受限词频、阈值、噪声、缓存、预算 | 同一发布重复读取值相同且不扣费；新采样新扣费；发布/预算/审计原子提交 |
-| 5 配置与审计查询 | 管理员配置策略，管理员/审计员只读日志 | 非法参数拒绝；仅新发布使用新策略；日志不泄露敏感输入 |
-| 6 导出与整体验证 | 复用已发布结果导出 PDF/CSV，跨平台与性能 | 导出与看板同源，不重新采样；真实网络端到端；性能/长期/故障测试 |
+## 9. 已实现模块与回归入口
 
-第 4 片的设计门槛：噪声使用的 ε 必须与实际扣除的 ε_cost 一致；
-区分均值与向量统计量的敏感度和输出范围；固定公开词表并限制单份评价贡献。
-精确样本数与 k 门槛的发布边界、隐私邻接定义、数据/策略版本与缓存键须在实现前明确。
-重新采样、更新评价数据或更改策略不能借“缓存免费”绕过预算。
-默认参数采用API契约中的epsilon=0.1、k=5、每课总预算4.0；隐私假设与工程限制见第14节，不宣称已提供形式化完整差分隐私保证。
+以下路径以 project/ 为基准。
 
-## 10. 已完成的只读校验与后续分段审查
-
-只读校验整理已验收并提交；后续业务继续保留相同边界，
-保留健康检查、账号响应结构、Cookie 路径、三角色权限、旧库迁移和审计 REPLACE 防护。
-
-只读校验阶段的历史验收矩阵（当时版本v2；当前v3继续验证同等拒绝路径）：
-
-| 场景 | 期望 |
+| 模块 | 核心回归 |
 | --- | --- |
-| 当时当前版本v2 + 有效会话 | 原账号/课程读取仍 200，权限拒绝仍 403 |
-| 当时当前版本v2 + 无效会话 | 仍 401 |
-| 任一库未知/混合版本、缺预期表 | 业务读取与 ready 一致拒绝，503 DATABASE_NOT_READY，无数据泄露 |
-| 完整 v1 + 低层诊断读取 | 仍可读取以备份/复核；不能直接供业务继续使用 |
-| 业务版本校验异常 | 三库无新增行、无隐式升级或文件重建 |
-| 管理写入、并发撤权、迁移与审计原回归 | 不回归 |
+| 账号与权限 | tests/integration/test_auth.py、test_auth_atomicity.py |
+| 数据库与迁移 | tests/integration/test_database.py、test_auth_migration.py、test_workflow_migration.py、test_checked_reads.py |
+| 课程与评价码 | tests/integration/test_courses.py |
+| 匿名提交 | tests/integration/test_submissions.py |
+| 统计、缓存、预算与性能 | tests/integration/test_statistics.py、test_statistics_performance.py；tests/unit/test_privacy.py |
+| 配置与审计 | tests/integration/test_governance.py |
+| 快照导出 | tests/integration/test_exports.py |
+| 真实HTTP闭环 | tests/system/test_business_flow.py |
+| 页面与配置衔接 | tests/pages/test_pages.py、tests/js/config.test.cjs |
+| 数据生成及安装恢复 | tests/integration/test_test_data.py |
 
-此前只读校验以29f2477为基线；本次业务开发以754d681为基线，保留主区合入的页面、前端计划、README与忽略规则。使用review-agent skill的子代理逐段直接对照diff、需求与测试证据审查；不生成reviewer交接文档。
+默认参数epsilon=0.1、k=5、每课总预算4.0；隐私模型和工程限制见第14节。
 
+## 10. 结构与事务不变量
 
-## 11. 前后端协作与前端预留契约
-
-2026-10-26 用户同步的边界优先于旧计划中的“仅本地测试”约定。主区与前端工作树均有独立归属，后端只在 backend 分支工作。
-
-| 归属 | 文件范围（相对 project/src/taces/） |
+| 场景 | 当前行为 |
 | --- | --- |
-| 前端 | presentation/templates/**、presentation/static/**、presentation/routes/pages.py、presentation/app.py、errors.py 的 HTML 分支 |
-| 后端 | business/**、data/**、routes 下除 pages.py 的路由、errors.py 的 JSON 分支，以及 project/docs/ |
-| 注册衔接 | presentation/routes/__init__.py 已提供 register(app)；后端新蓝图只增加 import/register_blueprint，不修改 app.py |
+| 当前v3 + 有效会话 | 正常业务读取200，角色或资源归属不符403 |
+| 当前v3 + 无效会话 | 401 |
+| 任一库未知/混合版本、缺预期表 | 业务读取与ready一致拒绝，503 DATABASE_NOT_READY |
+| 完整旧库 + 低层诊断读取 | 可读取以备份/复核，不能供当前业务继续使用 |
+| 结构校验失败 | 无隐式升级或文件重建，不新增业务行 |
+| 提交/发布/配置/迁移中的写入或审计失败 | 所涉及三库事务回滚 |
 
-当前基线已使非/api请求渲染HTML错误页，/api请求保持JSON，页面测试位于tests/pages。后端保留此分支，不修改HTML处理。
+临时测试库覆盖上述拒绝路径与并发撤权、重复码、首次并发发布和审计不可覆盖行为。
 
-以下四项为用户确认的前端设计前提，当前后端均已实现。字段与类型见project/docs/API_CONTRACT.md；前端分支最新修正作为契约依据，不自动合并前端分支。
+## 11. 当前前后端衔接
 
-| 前端预留入口 | 后端必须提供的契约 |
+正式页面、静态资源、错误页和业务接口均已合入主分支。应用工厂通过 routes/__init__.py 注册蓝图；非/api请求返回HTML错误页，/api请求返回JSON。
+
+| 入口 | 当前契约 |
 | --- | --- |
-| GET /api/courses/<id>/statistics | 统计业务未发布/阈值拒绝返回200，state为unpublished；interval、spread、distinguishable在后端算好，前端不重算差分隐私 |
-| 发布/读取 | 新发布扣预算，重复读取同一缓存免费；不得免费重新采样 |
-| GET /api/admin/config | 返回 values、ranges、units 三组，前端不写死参数范围 |
-| GET /api/admin/audit | 返回已翻译用户名、中文动作、Asia/Shanghai时间，并自带courses供筛选；审计员只有audit:read，不能靠调用/api/courses补齐筛选项 |
+| GET /api/courses/<id>/statistics | 未发布/阈值拒绝返回200；interval、spread、distinguishable由后端计算 |
+| 发布/读取 | 新发布扣预算，重复读取同一缓存免费 |
+| GET /api/admin/config | values、ranges、units；PATCH为顶层epsilon/k/epsilonTotal |
+| GET /api/admin/audit | 用户名、中文动作、Asia/Shanghai时间及独立courses筛选项 |
 
-统计业务的“未发布”是正常200状态；认证、越权、数据库不可用仍按现有API错误契约处理，结构版本拒绝继续使用503。
-
+页面的USE_MOCK仍为true，模拟账号/评价码与真实库互不关联；导出API已实现，但看板按钮仍禁用。整页真实数据联调尚未完成，不能将页面Mock演示等同于后端闭环验证。
 
 ## 12. 课程与评价码管理（第2b片）
 
@@ -347,4 +317,4 @@ PDF使用ReportLab并对用户文字转义，表头跨页重复。优先使用�
 
 本地临时库真实HTTP闭环：管理员登录/建教师与审计员/建课/发码→学生无会话验码并提交→教师发布/缓存重读/导出→审计员读取带课程筛选项的日志。使用随机本地端口，结束时关闭服务，无真实库写入。
 单次1万份、每份3维的临时数据首次发布耗时0.166秒（仅本机观察，非跨机器性能承诺）。两页中文PDF已用pypdf校验文本/数值，并渲染逐页检查。尚未运行Linux/Windows双平台对照、72小时长期运行、断电/磁盘满故障、HTTPS代理联调或形式化有限精度DP审计；前端mock开关和页面联调由前端负责。
-本轮执行环境为Windows；Linux对照、长稳和OS故障注入需另设验收环境与运行窗口，HTTPS需部署环境，形式化DP需独立审计，均未纳入这次业务闭环验证。页面联调待frontend分支修正合并及其mock开关切换。
+本轮执行环境为Windows；Linux对照、长稳和OS故障注入需另设验收环境与运行窗口，HTTPS需部署环境，形式化DP需独立审计，均未纳入这次业务闭环验证。前后端代码已合入主分支，页面真实联调仍待mock开关切换和导出按钮等行为接入。

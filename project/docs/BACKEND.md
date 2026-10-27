@@ -15,13 +15,14 @@
 | 数据库 | 当前 schema 版本为 3，三库共 15 张表 | data/database.py 的 SCHEMA_VERSION / TABLES |
 | 课程与评价码，第 2b 片 | 已实现管理员课程创建/修改、教师分配、评价窗口与随机评价码批量生成 | 本文第 9 节 |
 | 匿名提交，第3片 | 已实现无会话验码与原子提交，不要求CSRF | business/submission/service.py、routes/submissions.py |
-| 统计发布、配置查询、导出 | 按后续分段实施 | 本文第9节 |
-| 前端 | 已有独立静态样例 project/demo，尚未接入 Flask | [FRONTEND.md](FRONTEND.md) |
+| 统计发布，第4片 | 已实现阈值、向量噪声、发布缓存、预算原子扣费 | 本文第14节 |
+| 配置查询、导出 | 按后续分段实施 | 本文第9节 |
+| 前端 | Flask页面已合入基线，mock开关由前端维护 | [FRONTEND.md](FRONTEND.md) |
 
 需求编号沿用 SRS 的 FR1–FR10、NFR1–NFR7。需求原稿在 class2/assets/docs/，用例在
 class3/assets/docs/，实现说明不覆盖或重生成这些手工维护的资料。
 2026-10-26 已确定的预算口径是：**新发布扣预算，读取已有发布结果免费，重新采样视为新发布**。
-v3迁移已建立发布缓存 agg_result 及工作流支撑表；当前仅完成数据结构，发布业务仍按后续分段实施，不能把表存在当成业务已验收。
+v3迁移建立发布缓存agg_result及工作流支撑表；统计服务使用数据版本和策略修订号确定发布缓存。
 
 当前产品与文档中若仍有“每次查询重新加噪并扣费”等旧表述，以已确认的发布口径组织后续实现，
 并在交接中标出冲突；本轮不修改前端演示或其他课程文档。
@@ -76,7 +77,7 @@ metadata.db（main） + identity.db + evaluation.db
 ## 4. 已有 API 契约
 
 所有下列路径均已注册。成功返回 data，失败返回 error.code / error.message。
-GET 不写入业务数据；已认证的越权拒绝可以独立写入审计。
+统计GET可在首次满足门槛时发布并扣费；其余GET只读业务数据。认证后的拒绝和统计读取可写审计。
 
 | 方法与路径 | 调用者/约束 | 行为 |
 | --- | --- | --- |
@@ -96,6 +97,7 @@ GET 不写入业务数据；已认证的越权拒绝可以独立写入审计。
 | POST /api/admin/courses/<course_id>/evaluation-codes | 管理员+CSRF | 批量发码，201；只此响应可得明文 |
 | POST /api/evaluation-codes/verify | 学生评价码，无会话/CSRF | 校验不耗码；200 valid/原因 |
 | POST /api/submissions | 学生评价码，无会话/CSRF | 原子评分写入与耗码，201 submissionId |
+| GET /api/courses/<course_id>/statistics | 课程所属教师 | 门槛拒绝200，发布与预算/审计同事务，缓存免费 |
 
 账号响应仅包含 user_id、username、role、is_active、created_at。接口详情、JSON 字段见 AUTH.md。
 员工账号角色为 admin / teacher / auditor；学生使用匿名评价码，不提供学生注册/登录接口。
@@ -132,7 +134,7 @@ SQL 位于 project/src/taces/data/schema/，版本以 SCHEMA_VERSION=3 为准。
 - score 仅允许整数 1–5；开放题行长度 1–500，未填写时不建行。
 - enroll_code 仅预留 64 字符 code_hash、course_id、used_flag，不留学生到提交的关联。
 - 课程与维度跨库关系须在未来提交业务事务中校验，不能依赖不存在的跨文件外键。
-- 预算使用整数微单位，1 ε = 1,000,000 微单位；已有 SQL 防负消耗和超支，扣费业务尚未实现。
+- 预算使用整数微单位，1 ε = 1,000,000 微单位；SQL防负消耗和超支，发布时条件更新扣费。
 - audit_log 拒绝 UPDATE / DELETE；每个连接启用 recursive_triggers，阻止 REPLACE 隐式删除覆盖。
 - 版本与预期表名检查不是完整结构指纹、完整性检查或磁盘可写性证明。
 
@@ -209,7 +211,7 @@ Set-Location .\project
 .\.venv\Scripts\python.exe -m pytest -q --cov=taces --cov-report=term-missing --tb=short
 ~~~
 
-只读校验整理阶段的历史结果：208 passed、0 failed、0 skipped，语句覆盖率98%（569条语句、14条未覆盖）。第2b片完整测试247通过；第3片当前完整测试275 passed、0 failed、0 skipped，398.81秒；这两段未重新统计覆盖率。
+只读校验整理阶段的历史结果：208 passed、0 failed、0 skipped，语句覆盖率98%（569条语句、14条未覆盖）。第2b片完整测试247通过；第3片完整测试275 passed、0 failed、0 skipped，398.81秒；第4片统计发布完整测试296 passed、0 failed、0 skipped，429.66秒。以上业务段未重新统计覆盖率。
 只读校验阶段保留原有176项断言并新增32项回归；对齐前端与uv提交后的新基线为217项，第2b片新增30项课程/迁移/边界回归。具体命令、红绿过程与未运行项保存在本地执行日志；不再额外生成 reviewer 交接文档。
 每次记录执行目录、命令、通过/失败/跳过、deselected/errors、回归场景和未执行原因。
 
@@ -265,7 +267,7 @@ Set-Location .\project
 | 后端 | business/**、data/**、routes 下除 pages.py 的路由、errors.py 的 JSON 分支，以及 project/docs/ |
 | 注册衔接 | 前端 T1 将提供 presentation/routes/__init__.py 的 register(app)；后端新蓝图只增加 import/register_blueprint，不修改 app.py |
 
-前端后续将使非 /api 请求渲染 HTML 错误页，/api 请求继续返回现有 JSON，并将未知页面测试迁入 tests/pages。当前29f2477基线仍统一返回JSON；后端保留未知 API JSON 契约，不抢改页面测试。
+当前基线已使非/api请求渲染HTML错误页，/api请求保持JSON，页面测试位于tests/pages。后端保留此分支，不修改HTML处理。
 
 以下四项为用户确认的前端设计前提，**前端预留，尚未实现**。相关业务动工前读取前端随后提供的 project/docs/API_CONTRACT.md，核对完整字段类型与可空性，不自行发明不兼容形状。
 
@@ -295,3 +297,28 @@ course_id允许1–64位英文字母、数字、点、短横线、下划线；�
 提交必须覆盖课程全部维度且名称唯一，score为严格整数1–5（拒绝bool/浮点/字符串），openText可省略或为空，最多500字符，拒绝无效Unicode和NUL。
 写事务原子执行条件耗码、评分/开放题写入及课程数据版本+1；写入失败均回滚。两请求同时使用一码仅一个201，另一409 CODE_USED；过期为409 WINDOW_CLOSED，未知码400 INVALID_CODE。
 评价库不增加code_hash/student/user/IP/提交时间字段；身份表不加submission_id；匿名验码和个人提交不写审计时间，避免按日志关联身份。
+
+## 14. 统计与隐私发布（第4片）
+
+教师GET /api/courses/<id>/statistics必须有statistics:own且当前仍拥有课程；管理员、审计员不能借课程管理权限读取结果。
+默认epsilon=0.1、k=5、每课总预算4.0，均取自privacy_policy；本段尚未开放配置API。
+样本不足返回200 unpublished，包含sample/threshold/shortfall/charged=false，无评分或文本结果。
+已发布结果包含publicationId、charged以及前端所需的interval/spread/distinguishable/budgetExhausted。
+缓存键为课程、course_state.data_version、privacy_policy.revision；相同键重读不采样、不扣费。
+新发布在同一BEGIN IMMEDIATE事务内验证权限、读取评价、条件扣预算、插入快照并留痕；失败整体回滚，并发首次查看只发布一次。
+预算不足以支付完整一次发布时返回最后快照、budgetExhausted=true。旧账本已耗尽却没有快照时，200 unpublished/reason=budget_exhausted，不构造虚假结果。
+提高门槛不会撤回已经公开的快照；新数据不满足新门槛时仍返回最后快照。统计成功/缓存读取/业务拒绝均记固定动作，只有statistics.publish记实际epsilon费用。
+
+隐私模型是**固定参与名单和精确样本数下，替换一份已接受评价的评分与受限文本**。responses、enrolled、门槛判断、发布时机不是参与隐私保护机制，不能声称隐藏某人是否提交。
+使用Laplace向量机制和顺序组合，参考[Dwork与Roth，第3章](https://www.cis.upenn.edu/~aaroth/Papers/privacybook.pdf)。每次发布的epsilon按以下三份相加，账本扣除完整epsilon：
+
+| 输出 | 预算份额 | 替换邻接L1敏感度 |
+| --- | --- | --- |
+| d个维度均值（1–5分） | epsilon/2 | 4d/n |
+| 每份评价等权均分四舍五入后的五档直方图 | epsilon/4 | 2 |
+| 12词公开词表文档频数及有文本份数的联合向量 | epsilon/4 | 至多7（每份最多3个不同词，文本有无另计1） |
+
+公开词表为作业/反馈/节奏/实验/清晰/互动/实践/例子/考核/答疑/难度/内容，按固定顺序至多取3词；同词在一份内只计一次。旧库多条文本也按submission_id限贡献。所有词与文本份数始终采样，包括真实计数0的坐标；不做私有候选词选择，不返回原文或自选关键词。
+维度噪声后裁剪至[1,5]，pooledMean由这些噪声均值及课程权重后处理。直方图非负化后按公开n归一化、最大余数取整；全部非正时使用公开均匀分配。文本份数裁剪至[0,n]，词频裁剪至该噪声份数。
+interval是90%同时噪声误差界，b为均值噪声尺度：min(4,向上保留两位(b·ln(10d)+0.005))。它不是总体抽样置信区间。spread为展示维度最大值减最小值，只有spread>2interval才distinguishable。
+生产采样来自secrets.SystemRandom，HTTP没有seed或无噪声开关；纯函数测试可注入确定性噪声回调。当前使用浮点逆CDF，未做有限精度形式化审计，不能等同经验证的严格DP实现。

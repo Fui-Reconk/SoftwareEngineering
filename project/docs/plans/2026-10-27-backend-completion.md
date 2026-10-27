@@ -49,10 +49,10 @@
 ### Task 3: 纯隐私计算与原子发布
 **Files:** business/privacy/mechanism.py、business/stats/service.py、routes/statistics.py、registry；unit/test_privacy.py、integration/test_statistics.py。
 **Interfaces:** pure release(means,hist,wordcounts,textcount,n,weights,epsilon,noise=laplace)->numeric payload；StatisticsService(db,auth).get(token,id)->unpublished/published。
-- [ ] 用手算确定的敏感度/组合参数与确定性测试采样钩子写红测；生产随机源不可通过HTTP控制。
-- [ ] 写threshold拒绝、非法角色/他人课程、缓存同值同时间免费、并发只发布一次、回滚、预算耗尽旧结果/无旧结果、新数据/策略发布的红测。
-- [ ] 实现同一写事务中的权限/读数据/预算/快照/审计；导出用已发布快照读取而非触发发布。
-- [ ] 全量回归、review-agent、修复、commit；文档准确说明假设/边界，不虚称正式DP验收。
+- [x] 用手算确定的敏感度/组合参数与确定性测试采样钩子写红测；生产随机源不可通过HTTP控制。
+- [x] 写threshold拒绝、非法角色/他人课程、缓存同值同时间免费、并发只发布一次、回滚、预算耗尽旧结果/无旧结果、新数据/策略发布的红测。
+- [x] 实现同一写事务中的权限/读数据/预算/快照/审计；导出用已发布快照读取而非触发发布。
+- [x] 全量回归、review-agent、修复、commit；文档准确说明假设/边界，不虚称正式DP验收。
 
 ### Task 4: 配置与审计查询
 **Files:** business/config/service.py、business/audit/service.py、business/errors.py(field)、errors.py的JSON分支、routes/governance.py、registry；tests/integration/test_governance.py。

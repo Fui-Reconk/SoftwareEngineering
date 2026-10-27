@@ -12,6 +12,7 @@ dependencies = [
     "Werkzeug",
     "pytest",
     "pytest-cov",
+    "tzdata>=2026.5",
 ]
 
 [tool.uv]

@@ -22,7 +22,9 @@
 `account` 为 `{user_id, username, role, is_active, created_at}`，`role` 取 `teacher` / `admin` / `auditor`。
 **审计员调不了 `GET /api/courses`**（`list_courses` 只放行 admin 与有 `courses:own` 的教师），页面不要对审计员发这个请求。
 
-## 待实现
+## 业务契约与实现状态
+
+2026-10-27：统计、评价码校验与匿名提交已实现；配置与审计查询随后分段实现。
 
 ### 1. 统计发布（第 4 片）
 
@@ -53,6 +55,8 @@
 - 扣费按发布。重复查看命中发布缓存，返回同一份 `publishedAt` 与数值，不再扣预算、不再加噪。
 - 预算用完后仍是 `state: "published"`（返回最后一次发布），不返回拒绝。教师始终看得到数据，
   此时 `budgetExhausted` 为 `true`，页面在页脚说明「这份不会再更新」。
+
+后端补充：published含publicationId（已发布快照标识）及charged（本请求是否新发布）。精确参与数不受差分隐私保护；interval是噪声误差界，模型假设见BACKEND.md第14节。若历史账本已耗尽却从未保存发布，则200 unpublished/reason=budget_exhausted，仍带sample/threshold/shortfall/charged=false。门槛升高也不会撤回已有公开结果。
 
 ### 2. 评价码校验（第 3 片）
 

@@ -9,3 +9,6 @@ pytest
 
 # Coverage reporting for the privacy and statistics modules.
 pytest-cov
+
+# IANA Asia/Shanghai timezone data, also available on Windows.
+tzdata>=2026.5

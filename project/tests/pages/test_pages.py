@@ -112,6 +112,5 @@ def test_audit_page_is_read_only(app):
     assert "查询留痕" in body
     assert "操作者" in body
     assert "消耗 ε" in body
-    assert "只增不改" in body
-    # 「没有删除入口」这句话本身含「删除」，所以断的是控件，不是字面
-    assert not re.search(r"<(?:button|a)\b[^>]*>\s*删除", body)
+    # 检查操作入口，而不是依赖页面中的说明文案。
+    assert not re.search(r"<(?:button|a)\b[^>]*>\s*(?:编辑|修改|删除)", body)

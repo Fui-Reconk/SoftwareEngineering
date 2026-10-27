@@ -1,26 +1,48 @@
 {% extends "base.html" %}
 
 {% block title %}教职工登录 · TACES{% endblock %}
+{% block body_class %} page-login{% endblock %}
 
 {% block content %}
 <section class="card login">
-  <h1>教职工登录</h1>
+  <div class="login-panel">
+    <h1>教职工登录</h1>
+    <p class="login-intro">使用教职工账号进入工作区</p>
 
-  <form class="form" id="loginForm" novalidate>
-    <label class="field">
-      <span class="field-label">用户名</span>
-      <input class="input" type="text" name="username" autocomplete="username"
-             autocapitalize="none" spellcheck="false" required>
-    </label>
-    <label class="field">
-      <span class="field-label">密码</span>
-      <input class="input" type="password" name="password" autocomplete="current-password" required>
-    </label>
-    <p class="form-error" id="loginError" role="alert" hidden></p>
-    <button class="btn primary" type="submit">登录</button>
-    <a class="form-link" href="{{ url_for('pages.student_code') }}">返回学生评教</a>
-  </form>
-
+    <form class="form" id="loginForm" novalidate>
+      <label class="field">
+        <span class="field-label">用户名</span>
+        <input class="input" type="text" name="username" autocomplete="username"
+               autocapitalize="none" spellcheck="false" required>
+      </label>
+      <label class="field">
+        <span class="field-label">密码</span>
+        <input class="input" type="password" name="password" autocomplete="current-password" required>
+      </label>
+      <p class="form-error" id="loginError" role="alert" hidden></p>
+      <button class="btn primary" type="submit">登录</button>
+      <a class="form-link" href="{{ url_for('pages.student_code') }}">返回学生评教</a>
+    </form>
+  </div>
+  <div class="login-visual" aria-hidden="true">
+    <svg class="login-illustration" viewBox="0 0 360 280" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="179" cy="137" r="119" fill="#D5EADF"/>
+      <path d="M78 64a14 14 0 0 1 14-14h140a14 14 0 0 1 14 14v150a14 14 0 0 1-14 14H92a14 14 0 0 1-14-14V64Z" fill="#fff"/>
+      <path d="M103 79h73M103 89h50" stroke="#B8D3C5" stroke-width="6" stroke-linecap="round"/>
+      <path d="M103 123h34M103 158h34M103 193h34" stroke="#A8C6B5" stroke-width="6" stroke-linecap="round"/>
+      <g fill="#DCECE3">
+        <circle cx="156" cy="123" r="6"/><circle cx="174" cy="123" r="6"/><circle cx="192" cy="123" r="6"/><circle cx="210" cy="123" r="6"/><circle cx="228" cy="123" r="6"/>
+        <circle cx="156" cy="158" r="6"/><circle cx="174" cy="158" r="6"/><circle cx="192" cy="158" r="6"/><circle cx="210" cy="158" r="6"/><circle cx="228" cy="158" r="6"/>
+        <circle cx="156" cy="193" r="6"/><circle cx="174" cy="193" r="6"/><circle cx="192" cy="193" r="6"/><circle cx="210" cy="193" r="6"/><circle cx="228" cy="193" r="6"/>
+      </g>
+      <g fill="#2B8060"><circle cx="210" cy="123" r="6"/><circle cx="192" cy="158" r="6"/><circle cx="210" cy="193" r="6"/></g>
+      <path d="M209 181a12 12 0 0 1 12-12h56a12 12 0 0 1 12 12v44a12 12 0 0 1-12 12h-25l-14 11v-11h-17a12 12 0 0 1-12-12v-44Z" fill="#1F6B4E"/>
+      <path d="m232 203 10 10 23-23" stroke="#fff" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+      <circle cx="70" cy="205" r="8" fill="#E8C97B"/><circle cx="285" cy="75" r="7" fill="#77B696"/>
+    </svg>
+    <p class="login-visual-title">让每一份反馈被认真听见</p>
+    <p class="login-visual-copy">从真实的声音出发，持续改进教学。</p>
+  </div>
 </section>
 {% endblock %}
 

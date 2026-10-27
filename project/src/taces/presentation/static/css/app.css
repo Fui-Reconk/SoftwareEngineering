@@ -375,6 +375,41 @@ a:hover { text-decoration: underline; text-underline-offset: 3px; }
   .card { width: 100%; padding: 24px 20px 20px; }
 }
 
+/* ---------- 教职工登录：表单与评教插画 ---------- */
+.page-login { background: #155943; }
+.page-login .page-top {
+  height: 68px; padding: 0 32px; align-items: center;
+}
+.page-login .product { color: #fff; font-size: 15px; }
+.page-login .product-sub { color: #e1eee6; }
+.page-login .page-main { display: flex; justify-content: center; align-items: center; padding: 24px 24px 80px; }
+.page-login .login {
+  display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  width: min(900px, 100%); padding: 0; overflow: hidden;
+  border: 0; border-radius: 12px;
+}
+.login-panel { padding: 56px 52px 48px; }
+.login-panel h1 { font-size: 26px; }
+.login-intro { margin-top: 10px; color: var(--muted); }
+.login-panel .form { margin-top: 32px; gap: 18px; }
+.login-panel .input { height: 48px; background: #f4f8f5; }
+.login-panel .form .btn { height: 48px; }
+.login-panel .form-link { margin-top: -4px; }
+.login-visual {
+  display: flex; flex-direction: column; justify-content: center; align-items: center;
+  padding: 32px; background: #eaf4ee; text-align: center;
+}
+.login-illustration { width: min(100%, 340px); height: auto; }
+.login-visual-title { margin-top: 8px; color: #174c38; font-size: 19px; font-weight: 600; }
+.login-visual-copy { margin-top: 8px; color: #42614f; font-size: var(--fs-small); }
+@media (max-width: 700px) {
+  .page-login .page-top { height: 60px; padding-inline: 20px; }
+  .page-login .page-main { align-items: flex-start; padding: 16px 20px 32px; }
+  .page-login .login { grid-template-columns: minmax(0, 1fr); }
+  .login-panel { padding: 34px 28px 28px; }
+  .login-visual { display: none; }
+}
+
 /* ---------- 学生评分 ---------- */
 .card-wide { width: min(var(--page-max, 640px), 100%); }
 .evaluate-meta { margin-top: 6px; font-size: var(--fs-small); color: var(--muted); }

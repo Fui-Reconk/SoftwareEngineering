@@ -123,6 +123,20 @@ test('an expired session redirects to login before creating any navigation', asy
   assert.deepEqual(view.requests, ['/api/auth/me']);
 });
 
+test('the mobile menu exposes its open and closed state', async () => {
+  const view = await render('admin');
+  const toggle = view.elements.get('menuToggle');
+  const backdrop = view.elements.get('backdrop');
+  toggle.events.click();
+  assert.equal(toggle.attributes['aria-expanded'], 'true');
+  assert.equal(toggle.attributes['aria-label'], '收起工作区导航');
+  assert.equal(backdrop.hidden, false);
+  backdrop.events.click();
+  assert.equal(toggle.attributes['aria-expanded'], 'false');
+  assert.equal(toggle.attributes['aria-label'], '展开工作区导航');
+  assert.equal(backdrop.hidden, true);
+});
+
 test('resizing an open mobile drawer to desktop clears the backdrop', async () => {
   const view = await render('teacher');
   view.elements.get('menuToggle').events.click();

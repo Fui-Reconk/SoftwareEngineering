@@ -17,6 +17,7 @@
     sidebar.classList.toggle('open', open);
     backdrop.hidden = !open;
     toggle.setAttribute('aria-expanded', String(open));
+    toggle.setAttribute('aria-label', open ? '收起工作区导航' : '展开工作区导航');
   }
 
   if (toggle) {

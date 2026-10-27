@@ -96,22 +96,25 @@ a:hover { text-decoration: underline; text-underline-offset: 3px; }
   position: sticky; top: 0; height: 100svh; height: 100dvh; z-index: 20;
   display: grid; grid-template-rows: auto minmax(0, 1fr) auto;
   padding: 16px 12px; overflow: hidden;
-  background: var(--ground);
+  background: #137580; color: #fff;
 }
 .sidebar-scroll {
   min-height: 0; overflow-y: auto; overflow-x: hidden;
   overscroll-behavior-y: contain;
   padding-bottom: 14px;
-  scrollbar-width: thin;
+  scrollbar-width: thin; scrollbar-color: #a9d3d2 #137580;
 }
+.sidebar-scroll::-webkit-scrollbar { width: 6px; }
+.sidebar-scroll::-webkit-scrollbar-track { background: #137580; }
+.sidebar-scroll::-webkit-scrollbar-thumb { background: #a9d3d2; border-radius: 6px; }
 .staff-nav { display: grid; gap: 2px; }
 .brand { display: flex; align-items: center; gap: 10px; padding: 2px 8px 18px; }
 .brand-mark { width: 22px; height: 22px; flex: none; color: var(--chart-1); }
 .brand-text { display: grid; gap: 1px; }
 .brand-text strong { font-size: 13px; font-weight: 600; letter-spacing: 0.04em; }
-.brand-text small { font-size: 11px; color: var(--muted); }
+.brand-text small { font-size: 12px; color: #e8f8f7; }
 
-.group-label { padding: 0 8px; margin-bottom: 6px; font-size: 12px; color: var(--faint); }
+.group-label { padding: 0 8px; margin-bottom: 6px; font-size: 12px; color: #e8f8f7; }
 .course-list { display: grid; gap: 2px; }
 .course {
   display: grid; gap: 2px; width: 100%; padding: 8px;
@@ -119,28 +122,29 @@ a:hover { text-decoration: underline; text-underline-offset: 3px; }
   text-align: left; cursor: pointer;
   transition: background-color var(--t-hover) ease;
 }
-.course:hover { background: var(--raised); }
-.course[aria-current] { background: var(--active); }
+.course:hover { background: #085c64; }
+.course[aria-current] { background: #e5f2f1; color: #005058; }
 .course-title, .course-meta, .who-name { overflow-wrap: anywhere; }
 .course-title { font-size: var(--fs-body); font-weight: 500; }
-.course-meta { font-size: var(--fs-small); color: var(--muted); }
-.course-meta.short { color: var(--warning); }
+.course-meta { font-size: var(--fs-small); color: #e8f8f7; }
+.course[aria-current] .course-meta { color: #466966; }
+.course-meta.short { color: #fff1c6; }
+.course[aria-current] .course-meta.short { color: #7b4100; }
+.sidebar :focus-visible { outline-color: #fff; }
 
-.bottom { display: grid; gap: 10px; padding-top: 14px; border-top: 1px solid var(--border); background: var(--ground); }
-.who { display: grid; gap: 1px; padding: 0 8px; }
+.bottom { display: grid; gap: 10px; padding: 12px; border-radius: 12px; background: #e5f2f1; color: #173d3d; }
+.bottom :focus-visible { outline-color: #00565c; }
+.who { display: grid; gap: 1px; padding: 0 2px; }
 .who-name { font-size: 13px; font-weight: 500; }
-.who-meta { font-size: 11px; color: var(--muted); }
-#signOut { justify-self: start; height: 28px; padding: 0 8px; color: var(--muted); }
-#signOut:hover { color: var(--text); }
+.who-meta { font-size: 12px; color: #466966; }
+#signOut { justify-self: start; height: 32px; padding: 0 10px; background: #c7e5e2; color: #00565c; }
+#signOut:hover { background: #b7dedb; color: #003f44; }
 
 .frame { display: flex; flex-direction: column; min-width: 0; }
 .topbar {
   display: flex; align-items: center; gap: 12px;
   height: 48px; padding: 0 20px 0 20px; flex: none;
 }
-.topbar-context { font-size: var(--fs-small); color: var(--muted); }
-.topbar-right { display: flex; align-items: center; gap: 12px; margin-left: auto; }
-.stamp { font-size: var(--fs-small); color: var(--faint); }
 
 .sheet {
   flex: 0 0 auto; min-width: 0;
@@ -293,7 +297,7 @@ a:hover { text-decoration: underline; text-underline-offset: 3px; }
     transition: transform var(--t-ui) var(--ease-out);
   }
   .sidebar.open { transform: none; visibility: visible; }
-  .menu-toggle { display: inline-flex; width: 32px; padding: 0; color: var(--muted); }
+  .btn.menu-toggle { display: inline-flex; width: 44px; min-height: 44px; padding: 0; color: var(--muted); }
   .frame { min-height: 100svh; }
   .topbar { padding: 0 16px; }
   .sheet { flex: 1 1 auto; margin: 0; border: 0; border-radius: 0; padding: 16px; }
@@ -310,7 +314,6 @@ a:hover { text-decoration: underline; text-underline-offset: 3px; }
 @media (max-width: 480px) {
   .ivl-row { grid-template-columns: 56px minmax(0, 1fr) 42px; gap: 10px; }
   .wordlist li { grid-template-columns: 48px minmax(0, 1fr) 38px; }
-  .topbar-context { display: none; }
 }
 
 @media (prefers-reduced-motion: reduce) {

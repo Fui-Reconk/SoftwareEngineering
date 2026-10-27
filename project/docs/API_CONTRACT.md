@@ -6,6 +6,10 @@
 统一约定：成功响应 `{"data": ...}`，错误响应 `{"error": {"code": "...", "message": "..."}}`。
 写操作带 `X-CSRF-Token`，值来自登录响应或 `/api/auth/me`。`/api` 前缀以外的请求返回 HTML 错误页。
 
+**例外：学生端的两个写接口不带 CSRF。** `POST /api/evaluation-codes/verify` 与 `POST /api/submissions`
+面向没有账号的学生，没有会话可绑 CSRF；它们的能力由一次性评价码本身承担。前端在这两个请求上不发
+`X-CSRF-Token`，后端也不要因此拒绝它们。
+
 ## 已有
 
 | 方法与路径 | 状态 | data 形状 |
@@ -13,9 +17,10 @@
 | `POST /api/auth/login` | 已有 | `{account, csrf_token, expires_at}` |
 | `GET /api/auth/me` | 已有 | `{account, csrf_token, expires_at}` |
 | `POST /api/auth/logout` | 已有 | `{logged_out: true}` |
-| `GET /api/courses` | 已有 | `{courses: [{code, title, ...}]}`，教师只看到本人的课 |
+| `GET /api/courses` | 已有 | `{courses: [{course_id, name, teacher_id, term}]}`，教师只看到本人的课 |
 
 `account` 为 `{user_id, username, role, is_active, created_at}`，`role` 取 `teacher` / `admin` / `auditor`。
+**审计员调不了 `GET /api/courses`**（`list_courses` 只放行 admin 与有 `courses:own` 的教师），页面不要对审计员发这个请求。
 
 ## 待实现
 
@@ -36,6 +41,7 @@
 { "state": "published",
   "courseCode": "SE201-03", "courseTitle": "数据结构", "term": "2025–2026 学年第二学期",
   "responses": 235, "enrolled": 287, "publishedAt": "2026-06-30T10:13:00+08:00",
+  "budgetExhausted": false,
   "pooledMean": 3.86, "interval": 0.39, "spread": 0.30, "distinguishable": false,
   "dimensions": [{ "name": "教学内容", "value": 4.02 }],
   "distribution": [{ "score": 1, "count": 15 }],
@@ -46,7 +52,7 @@
 - `interval`、`spread`、`distinguishable` **由后端算**。前端不重算差分隐私，两份实现迟早不一致。
 - 扣费按发布。重复查看命中发布缓存，返回同一份 `publishedAt` 与数值，不再扣预算、不再加噪。
 - 预算用完后仍是 `state: "published"`（返回最后一次发布），不返回拒绝。教师始终看得到数据，
-  页面只在 `publishedAt` 较旧时于页脚说明「这份不会再更新」。
+  此时 `budgetExhausted` 为 `true`，页面在页脚说明「这份不会再更新」。
 
 ### 2. 评价码校验（第 3 片）
 
@@ -97,7 +103,7 @@
 { "entries": [{ "at": "2026-06-30T10:13:00+08:00", "actor": "李砚秋",
                 "action": "登录", "target": "—", "epsCost": 0 }],
   "next": 50,
-  "courses": [{ "code": "SE201-03", "title": "数据结构" }] }
+  "courses": [{ "course_id": "SE201-03", "name": "数据结构" }] }
 ```
 
 - `actor`、`action` 已翻译成人与中文；`at` 是 `Asia/Shanghai` 的 ISO 时间。前端只填槽，不自建动作字典。
@@ -107,3 +113,5 @@
 ## 差异登记
 
 后端实现与上面不一致时，在这里加一行：`日期 · 接口 · 改了什么 · 前端要跟着改哪里`。
+
+2026-10-27 · GET /api/courses / GET /api/admin/audit · 课程列表保持course_id/name/teacher_id/term；审计筛选courses为course_id/name，以用户最新同步为准，不添加code/title别名。

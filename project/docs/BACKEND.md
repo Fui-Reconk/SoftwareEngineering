@@ -1,6 +1,6 @@
 # TACES 后端实现说明
 
-更新日期：2026-10-26。当前代码基线：29f2477；工作树为 .agents/worktrees/backend，与 frontend 同级。
+更新日期：2026-10-27。业务开发基线：754d681；工作树为 .agents/worktrees/backend，与 frontend 同级。
 
 本文说明后端已经实现什么、各层如何协作、数据与权限边界，以及后续怎样分片验收。
 账号接口的字段示例和操作细节见 [AUTH.md](AUTH.md)。文中“待实现”均不代表已有可调用接口。
@@ -12,30 +12,30 @@
 | --- | --- | --- |
 | 工程底座，第 1 片 | 已实现应用工厂、配置、JSON 错误、健康检查、三库事务 | src/taces/presentation、config.py、data/database.py（相对 project/） |
 | 账号权限，第 2a 片 | 已实现登录、退出、改密、账号管理、角色与课程归属 | src/taces/business/auth、presentation/routes/auth.py（相对 project/） |
-| 数据库 | 当前 schema 版本为 2，三库共 11 张表 | data/database.py 的 SCHEMA_VERSION / TABLES |
-| 课程与评价码，第 2b 片 | 只有课程元信息读取；课程写入、教师分配、评价码生成待实现 | 本文第 9 节 |
+| 数据库 | 当前 schema 版本为 3，三库共 15 张表 | data/database.py 的 SCHEMA_VERSION / TABLES |
+| 课程与评价码，第 2b 片 | 已实现管理员课程创建/修改、教师分配、评价窗口与随机评价码批量生成 | 本文第 9 节 |
 | 匿名提交、统计发布、配置查询、导出 | 待实现，相应 business 包目前为空 | 本文第 9 节 |
 | 前端 | 已有独立静态样例 project/demo，尚未接入 Flask | [FRONTEND.md](FRONTEND.md) |
 
 需求编号沿用 SRS 的 FR1–FR10、NFR1–NFR7。需求原稿在 class2/assets/docs/，用例在
 class3/assets/docs/，实现说明不覆盖或重生成这些手工维护的资料。
 2026-10-26 已确定的预算口径是：**新发布扣预算，读取已有发布结果免费，重新采样视为新发布**。
-发布缓存 agg_result 已进入需求设计，当前 SQL 尚未创建该表；不能把设计中的九张核心表误写成当前数据库的表数。
+v3迁移已建立发布缓存 agg_result 及工作流支撑表；当前仅完成数据结构，发布业务仍按后续分段实施，不能把表存在当成业务已验收。
 
 当前产品与文档中若仍有“每次查询重新加噪并扣费”等旧表述，以已确认的发布口径组织后续实现，
 并在交接中标出冲突；本轮不修改前端演示或其他课程文档。
 
-## 2. 目标与本轮边界
+## 2. 目标与执行边界
 
 目标是让开发者能从本文找到真实代码入口、明确调用契约，按同一规则检查与维护已有后端。
-本轮采用用户选择的方式：先整理说明，再检查现有代码、修复已确认的问题、补充回归测试。
-不在本轮扩展第 2b 片或统计等后续功能，也不将静态样例接到真实数据。
+此前已完成说明整理与只读结构校验。2026-10-27用户授权继续完成后端代码，按第2b/3/4/5/6片逐段实现、测试、使用review-agent skill审查、修复后自主提交。
+执行计划见 [后端业务闭环计划](plans/2026-10-27-backend-completion.md)。前端文件与mock开关不属于本轮修改范围。
 
 对比过的方式：
 
 - 保留现有三层结构，按可复现问题做小范围整理：本轮采用，能保留已验收的账号行为和迁移路径。
 - 重新搭建后端或先拆一套通用仓储框架：会扩大变更与回归面，当前代码规模没有这项需求。
-- 直接继续开发剩余业务：不属于用户选定的本轮范围，保留在分片路线中。
+- 剩余业务：用户现已明确授权，按分片计划逐段交付，不一次性把全部改动混成一个提交。
 
 完成标准：说明与实际版本、路由、角色、事务一致；确认的问题先有失败回归，再有最小修复；
 本地全量测试通过，执行日志记录命令、数量、未运行项与范围；使用review-agent skill的子代理独立审查，修复验证后自主提交。
@@ -90,6 +90,9 @@ GET 不写入业务数据；已认证的越权拒绝可以独立写入审计。
 | PATCH /api/admin/accounts/<user_id> | 管理员 + CSRF | 修改角色、状态或密码，撤销目标全部会话 |
 | GET /api/courses | 管理员或教师 | 管理员读全部元信息，教师只读本人课程 |
 | GET /api/courses/<course_id> | 管理员或该课程教师 | 单课元信息，跨教师访问拒绝 |
+| POST /api/admin/courses | 管理员+CSRF | 创建课程、维度、窗口与每课预算，201 |
+| PATCH /api/admin/courses/<course_id> | 管理员+CSRF | 修改课程名/学期/归属/截止时间 |
+| POST /api/admin/courses/<course_id>/evaluation-codes | 管理员+CSRF | 批量发码，201；只此响应可得明文 |
 
 账号响应仅包含 user_id、username、role、is_active、created_at。接口详情、JSON 字段见 AUTH.md。
 员工账号角色为 admin / teacher / auditor；学生使用匿名评价码，不提供学生注册/登录接口。
@@ -114,12 +117,12 @@ GET 不写入业务数据；已认证的越权拒绝可以独立写入审计。
 
 | 文件/schema | 已有表 | 个人数据边界 |
 | --- | --- | --- |
-| project/db/identity.db / identity | student、enroll_code、account、auth_session、login_throttle | 员工凭证和会话不进入评价库 |
+| project/db/identity.db / identity | student、enroll_code、account、auth_session、login_throttle、code_state | 员工凭证和会话不进入评价库 |
 | project/db/evaluation.db / evaluation | rating、open_text | 不存学生标识、评价码、IP、精确提交时间 |
-| project/db/metadata.db / main | course、dimension、budget_ledger、audit_log | 课程、预算、审计元信息 |
+| project/db/metadata.db / main | course、dimension、budget_ledger、audit_log、course_state、privacy_policy、agg_result | 课程、预算、审计元信息 |
 
-SQL 位于 project/src/taces/data/schema/，版本以 SCHEMA_VERSION=2 为准。
-八张原有核心表加三张账号支撑表，共 11 张；未来 agg_result 须随显式版本迁移添加。
+SQL 位于 project/src/taces/data/schema/，版本以 SCHEMA_VERSION=3 为准。
+八张原有核心表、三张账号表及四张工作流支撑表，共15张。原表不加列，保持原插入与匿名边界。course_state保存截止时间与数据版本，code_state仅保存码摘要及过期时间，privacy_policy保存配置，agg_result保存后续发布快照。
 
 - rating 每维度一行，用随机 submission_id 将同份评价分组，同一份评价的维度不可重复。
 - open_text 通过 rating_id 关联其中一条评分，不将原文直接返回教师接口。
@@ -131,7 +134,7 @@ SQL 位于 project/src/taces/data/schema/，版本以 SCHEMA_VERSION=2 为准。
 - 版本与预期表名检查不是完整结构指纹、完整性检查或磁盘可写性证明。
 
 init-db 只为新库创建当前结构；当前版本可重复执行，保留数据。
-v1 必须显式 upgrade-db，新增身份支撑表并更新三库版本。未知/混合版本、缺失核心表拒绝接管。
+v1/v2必须显式upgrade-db，保留现有核心数据并更新三库版本至3。旧窗口与旧码默认关闭，需管理员明确重新配置并发行新码，不猜测旧教师ID到新账号的映射。未知/混合版本、缺失核心表拒绝接管。
 DDL、版本号与事务内的数据改变一起回滚；失败可能留下空文件，但不能靠删库绕过迁移。
 
 ## 6. 事务、读取和审计边界
@@ -203,8 +206,8 @@ Set-Location .\project
 .\.venv\Scripts\python.exe -m pytest -q --cov=taces --cov-report=term-missing --tb=short
 ~~~
 
-本轮在29f2477基线执行完整套件：208 passed、0 failed、0 skipped，语句覆盖率98%（569条语句、14条未覆盖），耗时227.56秒。
-其中原有176项未改断言，新增32项只读校验回归。具体命令、红绿过程与未运行项保存在本地执行日志；不再额外生成 reviewer 交接文档。
+只读校验整理阶段的历史结果：208 passed、0 failed、0 skipped，语句覆盖率98%（569条语句、14条未覆盖）。第2b片当前完整测试：247 passed、0 failed、0 skipped，315.14秒；此段未重新统计覆盖率。
+只读校验阶段保留原有176项断言并新增32项回归；对齐前端与uv提交后的新基线为217项，第2b片新增30项课程/迁移/边界回归。具体命令、红绿过程与未运行项保存在本地执行日志；不再额外生成 reviewer 交接文档。
 每次记录执行目录、命令、通过/失败/跳过、deselected/errors、回归场景和未执行原因。
 
 按用户指定的 executing-plans 方式执行：先确定文档/设计，再生成有接口与验收命令的任务计划；
@@ -229,9 +232,9 @@ Set-Location .\project
 重新采样、更新评价数据或更改策略不能借“缓存免费”绕过预算。
 本轮不替未实现模块选未经确认的 ε/k 默认值，也不宣称已提供完整差分隐私保证。
 
-## 10. 本轮代码整理验收与审查
+## 10. 已完成的只读校验与后续分段审查
 
-本轮只处理上述读取结构校验问题及其直接依赖，必要的现有分支回归按风险补齐，
+只读校验整理已验收并提交；后续业务继续保留相同边界，
 保留健康检查、账号响应结构、Cookie 路径、三角色权限、旧库迁移和审计 REPLACE 防护。
 
 验收矩阵：
@@ -271,3 +274,12 @@ Set-Location .\project
 | GET /api/admin/audit | 返回已翻译用户名、中文动作、Asia/Shanghai时间，并自带courses供筛选；审计员只有audit:read，不能靠调用/api/courses补齐筛选项 |
 
 统计业务的“未发布”是正常200状态；认证、越权、数据库不可用仍按现有API错误契约处理。本轮只读版本拒绝使用503，不引入统计业务或改变其预留状态码。
+
+
+## 12. 课程与评价码管理（第2b片）
+
+管理员先创建启用的teacher账号，再调用POST /api/admin/courses，JSON字段为course_id/name/teacher_id/term，可选closes_at（UTC Unix秒）和dimensions=[{name,weight}]。
+course_id允许1–64位英文字母、数字、点、短横线、下划线；课程名至多200、学期至多100字符。默认窗口7天，默认三个等权维度：教学内容/教学方法/考核方式。
+维度数量1–10、名称唯一、正权重合计为1；不支持在已有课程中隐式更换维度。PATCH支持name/teacher_id/term/closes_at，closes_at=0立即关闭。
+发码POST /api/admin/courses/<id>/evaluation-codes，JSON为count（1–1000）与可选expires_at（不晚于课程截止）。返回codes数组，每码128位熵、32位小写十六进制，仅响应可得明文，数据库只留SHA256摘要。
+创建/转移/发码均管理员权限+CSRF，写入与审计同一事务；当前/api/courses原字段不加别名。发码不记录学生姓名或把码关联到评价记录，分发由管理员离线完成。

@@ -4,7 +4,7 @@ import sqlite3
 
 import pytest
 
-from taces.data.database import CORE_TABLES, Database, SCHEMA_DIR, StorageError
+from taces.data.database import CORE_TABLES, Database, SCHEMA_DIR, SCHEMA_VERSION, StorageError
 
 
 def set_version(database, schema, version):
@@ -26,7 +26,7 @@ def test_data_checked_read_rejects_bad_version_and_releases_locks(database, sche
     with pytest.raises(StorageError):
         with database.read_current():
             pytest.fail("Invalid schemas must not expose a connection")
-    set_version(database, schema, 2)
+    set_version(database, schema, SCHEMA_VERSION)
     with database.transaction() as connection:
         connection.execute("INSERT INTO identity.student VALUES ('s1', 'name', 'class')")
     with database.read_current() as connection:

@@ -16,6 +16,14 @@
     submit.disabled = false;
   }
 
+  // 评分页把我们送回来时会留一句原因（码被用掉、窗口关了）
+  const carried = sessionStorage.getItem('taces.failure');
+  if (carried) {
+    sessionStorage.removeItem('taces.failure');
+    error.textContent = carried;
+    error.hidden = false;
+  }
+
   form.addEventListener('submit', async function (event) {
     event.preventDefault();
     error.hidden = true;

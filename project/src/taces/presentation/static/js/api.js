@@ -22,12 +22,14 @@ window.API = (() => {
 
   async function fromMock(path, method, body) {
     await new Promise((resolve) => setTimeout(resolve, MOCK_LATENCY));
-    // mock 的键是路径本身，查询串不参与匹配
-    const entry = window.MOCK ? window.MOCK[path.split('?')[0]] : undefined;
+    // mock 的键是路径本身，查询串单独交给取值函数
+    const [route, query] = path.split('?');
+    const entry = window.MOCK ? window.MOCK[route] : undefined;
     if (entry === undefined) {
       throw new APIError(404, 'NOT_FOUND', '没有这个接口。');
     }
-    const value = typeof entry === 'function' ? entry(body, method) : entry;
+    const params = new URLSearchParams(query || '');
+    const value = typeof entry === 'function' ? entry(body, method, params) : entry;
     if (value && value.__error) {
       throw new APIError(value.__error.status, value.__error.code, value.__error.message);
     }
@@ -37,7 +39,9 @@ window.API = (() => {
   async function fromServer(path, method, body) {
     const headers = { 'X-TACES-Request': '1' };
     if (body !== undefined) headers['Content-Type'] = 'application/json';
-    if (method !== 'GET') headers['X-CSRF-Token'] = csrfToken();
+    // 学生端的写接口没有会话可绑 CSRF（见 API_CONTRACT.md），没 token 就不发这个头
+    const token = csrfToken();
+    if (method !== 'GET' && token) headers['X-CSRF-Token'] = token;
 
     let response;
     try {

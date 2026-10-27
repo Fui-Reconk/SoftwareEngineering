@@ -27,6 +27,7 @@
     responses: 235,
     enrolled: 287,
     publishedAt: '2026-06-30T10:13:00+08:00',
+    budgetExhausted: false,
     pooledMean: 3.86,
     interval: 0.39,
     spread: 0.3,
@@ -95,10 +96,11 @@
       };
     },
     '/api/auth/me': SESSION,
+    '/api/auth/logout': { logged_out: true },
     '/api/courses': {
       courses: [
-        { code: 'SE201-03', title: '数据结构' },
-        { code: 'GE105-02', title: '软件工程导论' },
+        { course_id: 'SE201-03', name: '数据结构', teacher_id: 'a-liyanqiu', term: TERM },
+        { course_id: 'GE105-02', name: '软件工程导论', teacher_id: 'a-liyanqiu', term: TERM },
       ],
     },
     '/api/courses/SE201-03/statistics': PUBLISHED,
@@ -129,46 +131,61 @@
       }
       return { submissionId: 'sub-2026-0001' };
     },
-    '/api/admin/config': function (body) {
-      if (body && body.values) {
-        const bad = Object.entries(body.values).find(([key, value]) => {
+    '/api/admin/config': function (body, method) {
+      if (method === 'PATCH' && body) {
+        const bad = Object.entries(body).find(([key, value]) => {
           const range = CONFIG.ranges[key];
           return range && (value < range.min || value > range.max);
         });
         if (bad) {
           return { __error: { status: 422, code: 'INVALID_VALUE', message: `${{ epsilon: 'ε', k: 'k', epsilonTotal: '预算总量' }[bad[0]] || bad[0]} 超出允许范围。` } };
         }
-        return { values: body.values, ranges: CONFIG.ranges, units: CONFIG.units };
+        CONFIG.values = { ...CONFIG.values, ...body };
       }
       return CONFIG;
     },
-    '/api/admin/audit': function () {
+    '/api/admin/audit': function (body, method, params) {
       const raw = [
-        ['2026-06-30T10:13:00+08:00', '李砚秋', '查看统计', '数据结构', 0],
-        ['2026-06-30T10:12:00+08:00', '李砚秋', '发布统计', '数据结构', 0.1],
-        ['2026-06-28T16:40:00+08:00', '王敏', '修改参数', 'ε 0.20 改为 0.10', 0],
-        ['2026-06-28T16:38:00+08:00', '王敏', '修改参数', 'k 3 改为 5', 0],
-        ['2026-06-28T09:02:00+08:00', '王敏', '创建账号', 'liyanqiu', 0],
-        ['2026-06-27T20:31:00+08:00', '陈立', '查看审计日志', '—', 0],
-        ['2026-06-27T15:07:00+08:00', '李砚秋', '发布统计', '软件工程导论', 0.1],
-        ['2026-06-26T18:22:00+08:00', '王敏', '修改参数', 'ε 总量 2.00 改为 4.00', 0],
-        ['2026-06-26T11:45:00+08:00', '李砚秋', '登录', '—', 0],
-        ['2026-06-25T14:03:00+08:00', '陈立', '查看审计日志', '—', 0],
-        ['2026-06-25T09:58:00+08:00', '王敏', '停用账号', 'temp-auditor', 0],
-        ['2026-06-24T17:12:00+08:00', '李砚秋', '查看统计', '数据结构', 0],
-        ['2026-06-24T17:11:00+08:00', '李砚秋', '发布统计', '数据结构', 0.1],
-        ['2026-06-23T10:26:00+08:00', '王敏', '创建账号', 'chenli', 0],
-        ['2026-06-22T16:49:00+08:00', '陈立', '登录', '—', 0],
-        ['2026-06-21T08:31:00+08:00', '李砚秋', '登录失败', 'liyanqiu', 0],
-        ['2026-06-20T13:14:00+08:00', '王敏', '修改参数', 'ε 0.10 改为 0.20', 0],
-        ['2026-06-19T19:05:00+08:00', '李砚秋', '登录', '—', 0],
+        ['2026-06-30T10:13:00+08:00', '李砚秋', '查看统计', '数据结构', 'SE201-03', 0],
+        ['2026-06-30T10:12:00+08:00', '李砚秋', '发布统计', '数据结构', 'SE201-03', 0.1],
+        ['2026-06-28T16:40:00+08:00', '王敏', '修改参数', 'ε 0.20 改为 0.10', '', 0],
+        ['2026-06-28T16:38:00+08:00', '王敏', '修改参数', 'k 3 改为 5', '', 0],
+        ['2026-06-28T09:02:00+08:00', '王敏', '创建账号', 'liyanqiu', '', 0],
+        ['2026-06-27T20:31:00+08:00', '陈立', '查看审计日志', '-', '', 0],
+        ['2026-06-27T15:07:00+08:00', '李砚秋', '发布统计', '软件工程导论', 'GE105-02', 0.1],
+        ['2026-06-26T18:22:00+08:00', '王敏', '修改参数', 'ε 总量 2.00 改为 4.00', '', 0],
+        ['2026-06-26T11:45:00+08:00', '李砚秋', '登录', '-', '', 0],
+        ['2026-06-25T14:03:00+08:00', '陈立', '查看审计日志', '-', '', 0],
+        ['2026-06-25T09:58:00+08:00', '王敏', '停用账号', 'temp-auditor', '', 0],
+        ['2026-06-24T17:12:00+08:00', '李砚秋', '查看统计', '数据结构', 'SE201-03', 0],
+        ['2026-06-24T17:11:00+08:00', '李砚秋', '发布统计', '数据结构', 'SE201-03', 0.1],
+        ['2026-06-23T10:26:00+08:00', '王敏', '创建账号', 'chenli', '', 0],
+        ['2026-06-22T16:49:00+08:00', '陈立', '登录', '-', '', 0],
+        ['2026-06-21T08:31:00+08:00', '李砚秋', '登录失败', 'liyanqiu', '', 0],
+        ['2026-06-20T13:14:00+08:00', '王敏', '修改参数', 'ε 0.10 改为 0.20', '', 0],
+        ['2026-06-19T19:05:00+08:00', '李砚秋', '登录', '-', '', 0],
       ];
+      const course = params ? params.get('course') : '';
+      const from = params ? params.get('from') : '';
+      const to = params ? params.get('to') : '';
+      const limit = Number((params && params.get('limit')) || 50);
+      const offset = Number((params && params.get('offset')) || 0);
+
+      const filtered = raw
+        .map(([at, actor, action, target, code, epsCost]) => ({
+          at, actor, action, target, code, epsCost,
+        }))
+        .filter((entry) => (!course || entry.code === course))
+        .filter((entry) => (!from || entry.at.slice(0, 10) >= from))
+        .filter((entry) => (!to || entry.at.slice(0, 10) <= to));
+
+      const page = filtered.slice(offset, offset + limit);
       return {
-        entries: raw.map(([at, actor, action, target, epsCost]) => ({ at, actor, action, target, epsCost })),
-        next: null,
+        entries: page.map(({ at, actor, action, target, epsCost }) => ({ at, actor, action, target, epsCost })),
+        next: offset + page.length < filtered.length ? offset + page.length : null,
         courses: [
-          { code: 'SE201-03', title: '数据结构' },
-          { code: 'GE105-02', title: '软件工程导论' },
+          { course_id: 'SE201-03', name: '数据结构' },
+          { course_id: 'GE105-02', name: '软件工程导论' },
         ],
       };
     },

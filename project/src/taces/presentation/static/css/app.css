@@ -321,7 +321,7 @@ a:hover { text-decoration: underline; text-underline-offset: 3px; }
 .product { font-size: 13px; font-weight: 600; letter-spacing: 0.04em; color: var(--accent); }
 .product-sub { font-size: var(--fs-small); color: var(--muted); }
 .page-main { flex: 1; display: grid; place-items: center; padding: var(--pad); }
-.entry-note { font-size: var(--fs-body); color: var(--muted); }
+.entry-note { font-size: var(--fs-section); color: var(--text); }
 
 /* ---------- 卡片与表单 ---------- */
 .card {

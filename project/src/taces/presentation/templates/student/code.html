@@ -1,27 +1,38 @@
 {% extends "base.html" %}
 
 {% block title %}进入评教 · TACES{% endblock %}
+{% block body_class %} page-student student-entry{% endblock %}
 
 {% block content %}
-<section class="card">
-  <h1>进入评教</h1>
-  <form class="form" id="codeForm" novalidate>
-    <label class="field">
-      <span class="field-label">评价码</span>
-      <input class="input" type="text" name="code" id="codeInput"
-             autocomplete="off" autocapitalize="none" spellcheck="false" required>
-    </label>
-    <p class="form-error" id="codeError" role="alert" hidden
-       data-used="这个码已经用过了，一份评价只能提交一次。"
-       data-unknown="没有这个码，检查一下是不是打错了。"
-       data-expired="评教窗口已关闭，这次不能提交了。"
-       data-empty="先填评价码。"></p>
-    <button class="btn primary" type="submit">继续</button>
-    <a class="form-link" href="{{ url_for('pages.login') }}">教职工登录</a>
-  </form>
-  <p class="hint">提交后作废，不能重复使用。</p>
+<section class="card student-entry-card">
+  <div class="student-entry-panel">
+    <h1>进入评教</h1>
+    <p class="login-intro">凭评价码匿名参与课程评价</p>
+    <form class="form" id="codeForm" novalidate>
+      <label class="field">
+        <span class="field-label">评价码</span>
+        <input class="input" type="text" name="code" id="codeInput"
+               autocomplete="off" autocapitalize="none" spellcheck="false" required>
+      </label>
+      <p class="form-error" id="codeError" role="alert" hidden
+         data-used="这个码已经用过了，一份评价只能提交一次。"
+         data-unknown="没有这个码，检查一下是不是打错了。"
+         data-expired="评教窗口已关闭，这次不能提交了。"
+         data-empty="先填评价码。"></p>
+      <button class="btn primary" type="submit">继续</button>
+      <a class="form-link" href="{{ url_for('pages.login') }}">教职工登录</a>
+    </form>
+    <p class="hint">提交后作废，不能重复使用。</p>
+  </div>
+  <div class="login-visual" aria-hidden="true">
+    {% include "_feedback_art.html" %}
+    <p class="login-visual-title">每一份反馈都很重要</p>
+    <p class="login-visual-copy">你的声音，让课程变得更好。</p>
+  </div>
 </section>
 {% endblock %}
+
+{% block page_footer %}{% include "_page_footer.html" %}{% endblock %}
 
 {% block scripts %}
 <script src="{{ url_for('static', filename='js/pages/code.js') }}"></script>

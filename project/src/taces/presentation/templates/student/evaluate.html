@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 
 {% block title %}请给这门课打分 · TACES{% endblock %}
-{% block body_class %} page-wide{% endblock %}
+{% block body_class %} page-wide page-student student-evaluate{% endblock %}
 
 {% block content %}
 <section class="card card-wide">
@@ -30,6 +30,8 @@
   <p class="receipt-note">这份评价收下了，不能再改。</p>
 </section>
 {% endblock %}
+
+{% block page_footer %}{% include "_page_footer.html" %}{% endblock %}
 
 {% block scripts %}
 <script src="{{ url_for('static', filename='js/pages/evaluate.js') }}"></script>

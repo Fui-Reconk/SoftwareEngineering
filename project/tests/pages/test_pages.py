@@ -63,6 +63,12 @@ def test_login_page_links_back_to_student_entry(app):
     )
 
 
+@pytest.mark.parametrize("path", ["/", "/student", "/student/evaluate", "/login"])
+def test_public_pages_display_taces_footer(app, path):
+    body = app.test_client().get(path).get_data(as_text=True)
+    assert body.count("© 2026 TACES. All rights reserved.") == 1
+
+
 def test_board_renders_its_blocks(app):
     body = app.test_client().get("/teacher/SE201-03").get_data(as_text=True)
     assert "联合均分" in body

@@ -10,8 +10,10 @@ requires-python = ">=3.12"
 dependencies = [
     "Flask",
     "Werkzeug",
+    "pypdf>=6.21.2",
     "pytest",
     "pytest-cov",
+    "reportlab>=5.1.0",
     "tzdata>=2026.5",
 ]
 

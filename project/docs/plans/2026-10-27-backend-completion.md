@@ -64,6 +64,6 @@
 ### Task 5: 快照导出与整体验证
 **Files:** business/export/service.py、routes/exports.py、registry；依赖清单/锁文件（如需）、tests/integration/test_exports.py、system/test_business_flow.py、docs/BACKEND.md/API_CONTRACT.md。
 **Interfaces:** GET /api/courses/<id>/export?format=csv|pdf&publication=<optional-id>，仅本人教师；默认最后发布，返回已发布数字，未发布409，不扣费。支持明确publicationId精确选择。
-- [ ] 写权限/无快照/旧快照/缓存数值一致/不收费/CSV字符安全/PDF、完整管理员建课→学生提交→教师发布→审计员读取闭环红测。
-- [ ] 同步必要依赖，验证导出的中文与数值；不修改前端开关（当前仍USE_MOCK=true）。
-- [ ] 全量+实际网络烟雾测试、路径/归属检查；review-agent审查、修复后commit。更新后端文档事实，未验收平台/性能项如实记录。
+- [x] 写权限/无快照/旧快照/缓存数值一致/不收费/CSV字符安全/PDF、完整管理员建课→学生提交→教师发布→审计员读取闭环红测。
+- [x] 同步必要依赖，验证导出的中文与数值；不修改前端开关（当前仍USE_MOCK=true）。
+- [x] 全量+实际网络烟雾测试、路径/归属检查；review-agent审查、修复后commit。更新后端文档事实，未验收平台/性能项如实记录。

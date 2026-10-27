@@ -17,7 +17,7 @@
 | 匿名提交，第3片 | 已实现无会话验码与原子提交，不要求CSRF | business/submission/service.py、routes/submissions.py |
 | 统计发布，第4片 | 已实现阈值、向量噪声、发布缓存、预算原子扣费 | 本文第14节 |
 | 配置与审计，第5片 | 已实现参数范围校验、每课预算上限和审计筛选查询 | 本文第15节 |
-| 导出 | 下一段实现 | 本文第9节 |
+| 快照导出，第6片 | 已实现CSV/PDF、指定历史快照、导出留痕 | 本文第16节 |
 | 前端 | Flask页面已合入基线，mock开关由前端维护 | [FRONTEND.md](FRONTEND.md) |
 
 需求编号沿用 SRS 的 FR1–FR10、NFR1–NFR7。需求原稿在 class2/assets/docs/，用例在
@@ -101,6 +101,7 @@ metadata.db（main） + identity.db + evaluation.db
 | GET /api/courses/<course_id>/statistics | 课程所属教师 | 门槛拒绝200，发布与预算/审计同事务，缓存免费 |
 | GET/PATCH /api/admin/config | 管理员，PATCH需CSRF | values/ranges/units；非法值422并带field |
 | GET /api/admin/audit | 管理员/审计员 | 已翻译日志、上海时间、分页和独立课程筛选项 |
+| GET /api/courses/<course_id>/export | 课程所属教师 | format=csv/pdf，复用已发布快照，导出留痕且免费 |
 
 账号响应仅包含 user_id、username、role、is_active、created_at。接口详情、JSON 字段见 AUTH.md。
 员工账号角色为 admin / teacher / auditor；学生使用匿名评价码，不提供学生注册/登录接口。
@@ -130,13 +131,13 @@ metadata.db（main） + identity.db + evaluation.db
 | project/db/metadata.db / main | course、dimension、budget_ledger、audit_log、course_state、privacy_policy、agg_result | 课程、预算、审计元信息 |
 
 SQL 位于 project/src/taces/data/schema/，版本以 SCHEMA_VERSION=3 为准。
-八张原有核心表、三张账号表及四张工作流支撑表，共15张。原表不加列，保持原插入与匿名边界。course_state保存截止时间与数据版本，code_state仅保存码摘要及过期时间，privacy_policy保存配置，agg_result保存后续发布快照。
+八张原有核心表、三张账号表及四张工作流支撑表，共15张。原表不加列，保持原插入与匿名边界。course_state保存截止时间与数据版本，code_state仅保存码摘要及过期时间，privacy_policy保存配置，agg_result保存不可变发布快照。
 
 - rating 每维度一行，用随机 submission_id 将同份评价分组，同一份评价的维度不可重复。
 - open_text 通过 rating_id 关联其中一条评分，不将原文直接返回教师接口。
 - score 仅允许整数 1–5；开放题行长度 1–500，未填写时不建行。
 - enroll_code 仅预留 64 字符 code_hash、course_id、used_flag，不留学生到提交的关联。
-- 课程与维度跨库关系须在未来提交业务事务中校验，不能依赖不存在的跨文件外键。
+- 提交服务在同一写事务内校验课程与全部维度，不能依赖不存在的跨文件外键。
 - 预算使用整数微单位，1 ε = 1,000,000 微单位；SQL防负消耗和超支，发布时条件更新扣费。
 - audit_log 拒绝 UPDATE / DELETE；每个连接启用 recursive_triggers，阻止 REPLACE 隐式删除覆盖。
 - 版本与预期表名检查不是完整结构指纹、完整性检查或磁盘可写性证明。
@@ -201,7 +202,7 @@ Invoke-RestMethod http://127.0.0.1:5000/api/ready
 ~~~
 
 Linux 替换为项目虚拟环境的 bin/python；尚未在 Linux 验收。
-已有环境由用户通过 uv 配置，不因本轮整理重复安装依赖。
+每个工作树在project/执行uv sync --locked同步其本地虚拟环境；pyproject.toml、requirements.txt和uv.lock同步维护。tzdata提供Windows时区数据，ReportLab生成PDF，pypdf用于文档回归校验。
 Cookie/CSRF/登录限流/密码规则详见 AUTH.md；HTTPS 与代理部署仍需独立联调。
 
 ## 8. 测试与执行记录
@@ -216,6 +217,7 @@ Set-Location .\project
 
 只读校验整理阶段的历史结果：208 passed、0 failed、0 skipped，语句覆盖率98%（569条语句、14条未覆盖）。第2b片完整测试247通过；第3片完整测试275 passed、0 failed、0 skipped，398.81秒；第4片统计发布完整测试296 passed、0 failed、0 skipped，429.66秒。第5片配置/审计完整测试331 passed、0 failed、0 skipped，525.97秒。以上业务段未重新统计覆盖率。
 只读校验阶段保留原有176项断言并新增32项回归；对齐前端与uv提交后的新基线为217项，第2b片新增30项课程/迁移/边界回归。具体命令、红绿过程与未运行项保存在本地执行日志；不再额外生成 reviewer 交接文档。
+2026-10-27最终业务版本：在project/执行上述覆盖率命令并附--durations=5，344 passed、0 failed、0 skipped，582.05秒；1297条语句、47条未覆盖，总覆盖率96%，隐私机制94%、统计服务96%。各段实际使用review-agent skill；所有提出的可操作问题已用失败回归复现并修复。执行日志与PDF样本保存在本地tests/experiments/output/backend-validation/，不入版本库。
 每次记录执行目录、命令、通过/失败/跳过、deselected/errors、回归场景和未执行原因。
 
 按用户指定的 executing-plans 方式执行：先确定文档/设计，再生成有接口与验收命令的任务计划；
@@ -224,7 +226,7 @@ Set-Location .\project
 同一轮内不反复扩大测试，发现新的问题或代码改变时才补相应验证。
 2026-10-27用户授权：使用review-agent skill的子代理独立审查，修复验证后由主代理自主commit，不再等待用户复核；merge/push仍需另行指示。
 
-## 9. 后续分片与验收口径
+## 9. 分片与验收口径
 
 | 片段 | 工作内容 | 完成时必须验证 |
 | --- | --- | --- |
@@ -238,26 +240,25 @@ Set-Location .\project
 区分均值与向量统计量的敏感度和输出范围；固定公开词表并限制单份评价贡献。
 精确样本数与 k 门槛的发布边界、隐私邻接定义、数据/策略版本与缓存键须在实现前明确。
 重新采样、更新评价数据或更改策略不能借“缓存免费”绕过预算。
-本轮不替未实现模块选未经确认的 ε/k 默认值，也不宣称已提供完整差分隐私保证。
+默认参数采用API契约中的epsilon=0.1、k=5、每课总预算4.0；隐私假设与工程限制见第14节，不宣称已提供形式化完整差分隐私保证。
 
 ## 10. 已完成的只读校验与后续分段审查
 
 只读校验整理已验收并提交；后续业务继续保留相同边界，
 保留健康检查、账号响应结构、Cookie 路径、三角色权限、旧库迁移和审计 REPLACE 防护。
 
-验收矩阵：
+只读校验阶段的历史验收矩阵（当时版本v2；当前v3继续验证同等拒绝路径）：
 
 | 场景 | 期望 |
 | --- | --- |
-| 当前 v2 + 有效会话 | 原账号/课程读取仍 200，权限拒绝仍 403 |
-| 当前 v2 + 无效会话 | 仍 401 |
+| 当时当前版本v2 + 有效会话 | 原账号/课程读取仍 200，权限拒绝仍 403 |
+| 当时当前版本v2 + 无效会话 | 仍 401 |
 | 任一库未知/混合版本、缺预期表 | 业务读取与 ready 一致拒绝，503 DATABASE_NOT_READY，无数据泄露 |
 | 完整 v1 + 低层诊断读取 | 仍可读取以备份/复核；不能直接供业务继续使用 |
 | 业务版本校验异常 | 三库无新增行、无隐式升级或文件重建 |
 | 管理写入、并发撤权、迁移与审计原回归 | 不回归 |
 
-前端演示、PRODUCT.md、前端计划、README 和忽略规则已经由主区提交，
-本轮以29f2477为基线保留，不回退或覆盖。进度台账和执行日志保留，使用review-agent skill的子代理直接对照diff、需求与测试证据审查；不再生成reviewer交接文档。
+此前只读校验以29f2477为基线；本次业务开发以754d681为基线，保留主区合入的页面、前端计划、README与忽略规则。使用review-agent skill的子代理逐段直接对照diff、需求与测试证据审查；不生成reviewer交接文档。
 
 
 ## 11. 前后端协作与前端预留契约
@@ -268,11 +269,11 @@ Set-Location .\project
 | --- | --- |
 | 前端 | presentation/templates/**、presentation/static/**、presentation/routes/pages.py、presentation/app.py、errors.py 的 HTML 分支 |
 | 后端 | business/**、data/**、routes 下除 pages.py 的路由、errors.py 的 JSON 分支，以及 project/docs/ |
-| 注册衔接 | 前端 T1 将提供 presentation/routes/__init__.py 的 register(app)；后端新蓝图只增加 import/register_blueprint，不修改 app.py |
+| 注册衔接 | presentation/routes/__init__.py 已提供 register(app)；后端新蓝图只增加 import/register_blueprint，不修改 app.py |
 
 当前基线已使非/api请求渲染HTML错误页，/api请求保持JSON，页面测试位于tests/pages。后端保留此分支，不修改HTML处理。
 
-以下四项为用户确认的前端设计前提，**前端预留，尚未实现**。相关业务动工前读取前端随后提供的 project/docs/API_CONTRACT.md，核对完整字段类型与可空性，不自行发明不兼容形状。
+以下四项为用户确认的前端设计前提，当前后端均已实现。字段与类型见project/docs/API_CONTRACT.md；前端分支最新修正作为契约依据，不自动合并前端分支。
 
 | 前端预留入口 | 后端必须提供的契约 |
 | --- | --- |
@@ -281,7 +282,7 @@ Set-Location .\project
 | GET /api/admin/config | 返回 values、ranges、units 三组，前端不写死参数范围 |
 | GET /api/admin/audit | 返回已翻译用户名、中文动作、Asia/Shanghai时间，并自带courses供筛选；审计员只有audit:read，不能靠调用/api/courses补齐筛选项 |
 
-统计业务的“未发布”是正常200状态；认证、越权、数据库不可用仍按现有API错误契约处理。本轮只读版本拒绝使用503，不引入统计业务或改变其预留状态码。
+统计业务的“未发布”是正常200状态；认证、越权、数据库不可用仍按现有API错误契约处理，结构版本拒绝继续使用503。
 
 
 ## 12. 课程与评价码管理（第2b片）
@@ -334,3 +335,16 @@ epsilonTotal明确设置时更新每课总上限和新课程默认值，保留�
 GET /api/admin/audit允许管理员与审计员；教师403。返回entries/next/courses，courses独立查询为[{course_id,name}]，不绕过课程API授权。日志映射固定中文动作、账号用户名和Asia/Shanghai时间；账号操作的目标转换为目标用户名，课程操作转为课程名。历史未知动作显示“历史操作”，不存在的历史账号显示“历史账号”。不返回密码/令牌/评价码/开放题原文。
 支持from/to（YYYY-MM-DD本地日期或带时区ISO时间，最多六位小数秒）、course、limit（默认50，1–100）、offset（0–2147483647）。日期from含当天00:00，日期to含整天；ISO时间to含该时刻，拒绝无时区时间、超出微秒精度和反向范围。按整数UTC微秒比较与倒序，时间相同时按插入顺序倒序；next为下一页offset或null。未知/重复查询键和非法过滤400；查询本身不写审计，不递归留痕。
 预算JSON小数在解析时保留Decimal，先验证原始十进制范围和微单位可表示性，再转整数；不先经float舍入。审计过滤不使用会舍入至毫秒的julianday。
+极端指数导致Decimal无法表示时仍按原字段返回422；未知字段名含不可编码Unicode时以安全的field=request返回422，避免错误响应本身编码失败。
+
+## 16. 快照导出与整体验证（第6片）
+
+GET /api/courses/<id>/export?format=csv|pdf&publication=<可选快照编号>，format默认csv。必须具备exports:own且当前拥有该课；默认取最后发布，可指定32位十六进制publicationId。无任何快照409 NOT_PUBLISHED；指定快照不存在或不属于该课404 PUBLICATION_NOT_FOUND。格式/编号/未知或重复查询键错误400。
+导出服务只读agg_result.payload，不调用统计发布或读取评分原文；新提交尚未发布时仍导出旧快照。生成文件与导出审计处于同一事务，失败不返回文件；不加噪、不改账本。
+CSV为UTF-8 BOM的两列“指标/值”，基础键对应快照字段，维度/分布/词频键分别为dimension:<名称>、score:<1–5>、term:<公开词>，开放题噪声份数为openText.responses。字符串去前导空白后以=、+、-、@开头时加单引号，避免表格公式执行；数字保持数值。下载文件名仅由保存的发布编号和格式构成。
+PDF使用ReportLab并对用户文字转义，表头跨页重复。优先使用环境变量TACES_PDF_FONT指定的本地TrueType/TTC字体，其次动态定位Windows字体目录中的simsun.ttc，再回退STSong-Light CID字体。机器字体路径仅在环境中配置，不写入仓库；非Windows字体回退尚未双平台验收。PDF与CSV均包含同一发布编号、时间和噪声结果，不含开放题原文。
+快照保留发布当时的课程名称/学期；后续改名不重写历史。显式字体配置失效时返回通用JSON 500并回滚导出留痕，不生成不完整文件。
+
+本地临时库真实HTTP闭环：管理员登录/建教师与审计员/建课/发码→学生无会话验码并提交→教师发布/缓存重读/导出→审计员读取带课程筛选项的日志。使用随机本地端口，结束时关闭服务，无真实库写入。
+单次1万份、每份3维的临时数据首次发布耗时0.166秒（仅本机观察，非跨机器性能承诺）。两页中文PDF已用pypdf校验文本/数值，并渲染逐页检查。尚未运行Linux/Windows双平台对照、72小时长期运行、断电/磁盘满故障、HTTPS代理联调或形式化有限精度DP审计；前端mock开关和页面联调由前端负责。
+本轮执行环境为Windows；Linux对照、长稳和OS故障注入需另设验收环境与运行窗口，HTTPS需部署环境，形式化DP需独立审计，均未纳入这次业务闭环验证。页面联调待frontend分支修正合并及其mock开关切换。

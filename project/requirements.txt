@@ -12,3 +12,7 @@ pytest-cov
 
 # IANA Asia/Shanghai timezone data, also available on Windows.
 tzdata>=2026.5
+
+# Published-snapshot PDF generation and exported-document regression checks.
+reportlab>=5.1.0
+pypdf>=6.21.2

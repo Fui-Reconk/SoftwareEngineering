@@ -14,6 +14,7 @@ from .courses import courses_admin
 from .submissions import submissions
 from .statistics import statistics
 from .governance import governance
+from .exports import exports
 
 
 def register(app: Flask) -> None:
@@ -24,3 +25,4 @@ def register(app: Flask) -> None:
     app.register_blueprint(submissions, url_prefix="/api")
     app.register_blueprint(statistics, url_prefix="/api")
     app.register_blueprint(governance, url_prefix="/api")
+    app.register_blueprint(exports, url_prefix="/api")

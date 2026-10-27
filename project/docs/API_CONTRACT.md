@@ -1,6 +1,6 @@
 # 前端依赖的接口契约
 
-这份文件是**前端预留**，由前端按 SRS 第 6 章与 `docs/AUTH.md` 的既有契约写成。
+这份文件起初为**前端预留**，由前端按 SRS 第 6 章与 `docs/AUTH.md` 的既有契约写成，现由后端标注实际实现状态。
 后端实现第 3–5 片时以它为准；要改字段，在这份文件末尾登记差异，别让前端按旧形状写出来的页面悄悄对不上。
 
 统一约定：成功响应 `{"data": ...}`，错误响应 `{"error": {"code": "...", "message": "..."}}`。
@@ -115,6 +115,13 @@
 - `actor`、`action` 已翻译成人与中文；`at` 是 `Asia/Shanghai` 的 ISO 时间。前端只填槽，不自建动作字典。
 - `courses` 由这个接口自己返回，因为审计员只有 `audit:read`，调不了 `/api/courses`。
 - 只读，没有删除或编辑入口。
+
+from/to支持上海本地YYYY-MM-DD日期和带时区ISO时间（最多六位小数秒）；日期to含整天，ISO to含该时刻。limit默认50、上限100；offset非负。重复/未知查询键、非法或反向时间范围400。
+
+### 6. 快照导出（第6片，后端新增）
+
+`GET /api/courses/<course_id>/export?format=csv|pdf&publication=<可选publicationId>`，仅课程所属教师。format默认csv，指定publicationId可取历史发布；省略则取最后一次发布。返回附件文件，不套JSON data。CSV为UTF-8 BOM；PDF支持中文。导出不触发发布、不扣预算，保留与看板相同的快照编号、时间和数值。
+无发布409 NOT_PUBLISHED，指定快照不存在或不属于该课404 PUBLICATION_NOT_FOUND，非法/重复/未知查询参数400。该入口尚未要求前端新增按钮或修改mock开关。
 
 ## 差异登记
 

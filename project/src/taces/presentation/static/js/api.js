@@ -1,9 +1,9 @@
-/* 页面唯一的取数出口。接后端时只把 USE_MOCK 改成 false，页面代码不用动。
+/* 页面唯一的取数出口。默认连接真实后端，静态原型调试可手动启用 USE_MOCK。
    mock 的分支和 fetch 的分支返回同一种形状：接口的 data 部分，出错则抛 APIError。 */
 window.API = (() => {
   'use strict';
 
-  const USE_MOCK = true;
+  const USE_MOCK = false;
   const MOCK_LATENCY = 120;
 
   class APIError extends Error {

@@ -30,6 +30,8 @@ uv run python scripts/generate_test_data.py --output tests/experiments/output/sm
 | 审计员 | `demo_auditor` | 同上 |
 | 停用账号，登录预期失败 | `demo_disabled` | 同上 |
 
+数据库中的 `password_hash` 是正常的带盐scrypt散列，不是登录口令；登录输入上表明文密码。页面默认连接真实后端，旧Mock口令 `taces2026` 不适用于真实账号。`demo_disabled` 为故意停用的反例，不能登录。
+
 学生不登录。可用于学生演示的评价码在 `manifest.json` 的 `codes.student_demo`，属于 `at_k` 课程；提交后可演示从 5 份到 6 份、新版本重新发布。`codes.valid` 属于专门验证非法请求的空课程，`codes.submit` 的 5 枚码用于从零开始演示有效提交。
 
 ```powershell
@@ -37,7 +39,7 @@ uv run python scripts/generate_test_data.py --output tests/experiments/output/sm
 uv run python run.py
 ```
 
-现有前端 `src/taces/presentation/static/js/api.js` 的 `USE_MOCK` 仍为 `true`。本工具生成、安装和验证真实后端数据；页面沿用原有 Mock 时不会读取这些数据库。数据工具不修改前端文件。
+前端 `src/taces/presentation/static/js/api.js` 的 `USE_MOCK` 默认为 `false`，页面可使用安装后的真实账号与数据。手动启用Mock后读取的是独立模拟凭证和课程，不会校验数据库账号。
 
 ## 覆盖范围
 

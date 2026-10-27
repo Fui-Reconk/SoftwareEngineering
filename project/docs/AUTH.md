@@ -2,7 +2,7 @@
 
 本模块提供教师、管理员、审计员的账号和会话，以及课程元信息的归属校验。学生凭评价码匿名参与，不建立学生登录账号。课程、匿名提交、统计、配置、审计和导出接口均已实现；整体接口见 [API_CONTRACT.md](API_CONTRACT.md) 与 [BACKEND.md](BACKEND.md)。
 
-登录及角色页面已实现，当前默认使用 Mock；页面状态见 [FRONTEND.md](FRONTEND.md)。本文命令均以 `project/` 为工作目录，先执行 `uv sync`。
+登录及角色页面已实现，当前默认连接真实后端；页面状态见 [FRONTEND.md](FRONTEND.md)。本文命令均以 `project/` 为工作目录，先执行 `uv sync`。
 
 ## 初始化与升级
 

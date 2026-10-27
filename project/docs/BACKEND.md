@@ -18,7 +18,7 @@
 | 统计发布，第4片 | 已实现阈值、向量噪声、发布缓存、预算原子扣费 | 本文第14节 |
 | 配置与审计，第5片 | 已实现参数范围校验、每课预算上限和审计筛选查询 | 本文第15节 |
 | 快照导出，第6片 | 已实现CSV/PDF、指定历史快照、导出留痕 | 本文第16节 |
-| 前端 | 六个功能页面和入口页已实现，USE_MOCK=true；导出按钮尚未接API | [FRONTEND.md](FRONTEND.md) |
+| 前端 | 六个功能页面和入口页已实现，USE_MOCK=false；真实登录已验证，导出按钮尚未接API | [FRONTEND.md](FRONTEND.md) |
 
 需求编号沿用 SRS 的 FR1–FR10、NFR1–NFR7。需求原稿在 class2/assets/docs/，用例在
 class3/assets/docs/，实现说明不覆盖或重生成这些手工维护的资料。
@@ -201,10 +201,10 @@ Cookie/CSRF/登录限流/密码规则详见 AUTH.md；HTTPS 与代理部署仍�
 ~~~powershell
 uv run python -m pytest -q --cov=taces --cov-report=term-missing --tb=short
 uv run python -m pytest -q tests/integration/test_test_data.py
-node --test tests/js/config.test.cjs
+node --test tests/js/board.test.cjs tests/js/config.test.cjs tests/js/login.test.cjs
 ~~~
 
-2026-10-27已记录的执行结果：最近一次全量运行收集359项，359通过，taces语句覆盖97%（1297语句、42未覆盖）；随后补充两项备份连接关闭/安装失败恢复回归，最终数据工具17项全部通过，Node配置回归2项通过。当前完整收集应为361项，但不能把分别执行的结果称为同一次361项全量运行。
+2026-10-27登录故障修复后，最近一次Python全量执行361项全部通过（484.20秒），Node看板/配置/登录回归13项全部通过；登录回归包含真实HTTP服务、Cookie和角色跳转。此前数据工具17项通过；最近一次覆盖率记录来自此前359项全量运行：taces语句覆盖97%（1297语句、42未覆盖），本次361项运行未重新统计覆盖率。
 
 数据生成器的默认数据集另有171项检查通过：1万份原始聚合0.151秒，首次完整统计发布0.212秒，均为本机单次观察。生成器在临时副本回放113条HTTP请求语料，源演示码和预算保持不变。详见 [工具说明](../scripts/README.md)。
 
@@ -253,7 +253,7 @@ node --test tests/js/config.test.cjs
 | GET /api/admin/config | values、ranges、units；PATCH为顶层epsilon/k/epsilonTotal |
 | GET /api/admin/audit | 用户名、中文动作、Asia/Shanghai时间及独立courses筛选项 |
 
-页面的USE_MOCK仍为true，模拟账号/评价码与真实库互不关联；导出API已实现，但看板按钮仍禁用。整页真实数据联调尚未完成，不能将页面Mock演示等同于后端闭环验证。
+页面的USE_MOCK默认为false，登录使用真实账号，Cookie会话和按角色跳转由真实HTTP回归覆盖。Mock仍可手动启用，其模拟凭证与真实库互不关联。导出API已实现，但看板按钮仍禁用；全部页面边缘交互尚未验收。
 
 ## 12. 课程与评价码管理（第2b片）
 
@@ -317,4 +317,4 @@ PDF使用ReportLab并对用户文字转义，表头跨页重复。优先使用�
 
 本地临时库真实HTTP闭环：管理员登录/建教师与审计员/建课/发码→学生无会话验码并提交→教师发布/缓存重读/导出→审计员读取带课程筛选项的日志。使用随机本地端口，结束时关闭服务，无真实库写入。
 单次1万份、每份3维的临时数据首次发布耗时0.166秒（仅本机观察，非跨机器性能承诺）。两页中文PDF已用pypdf校验文本/数值，并渲染逐页检查。尚未运行Linux/Windows双平台对照、72小时长期运行、断电/磁盘满故障、HTTPS代理联调或形式化有限精度DP审计；前端mock开关和页面联调由前端负责。
-本轮执行环境为Windows；Linux对照、长稳和OS故障注入需另设验收环境与运行窗口，HTTPS需部署环境，形式化DP需独立审计，均未纳入这次业务闭环验证。前后端代码已合入主分支，页面真实联调仍待mock开关切换和导出按钮等行为接入。
+本轮执行环境为Windows；Linux对照、长稳和OS故障注入需另设验收环境与运行窗口，HTTPS需部署环境，形式化DP需独立审计，均未纳入这次业务闭环验证。前后端代码已合入主分支，页面默认已切换真实API；登录/会话/角色跳转已验证，导出按钮等行为仍待接入。

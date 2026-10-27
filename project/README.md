@@ -2,7 +2,7 @@
 
 学生凭一次性评价码提交匿名评分和选填评语；教师查看课程统计；管理员管理账号、课程和隐私参数；审计员只读查询留痕。
 
-当前已实现课程与发码、匿名提交、差分隐私统计发布、预算与发布缓存、配置、审计及 CSV/PDF 导出。六个功能页面和入口页已由 Flask 提供。**页面默认启用 Mock，尚未切换为读取真实后端；看板导出按钮也尚未接入已实现的导出 API。**
+当前已实现课程与发码、匿名提交、差分隐私统计发布、预算与发布缓存、配置、审计及 CSV/PDF 导出。六个功能页面和入口页已由 Flask 提供。**页面默认连接真实后端，可使用数据生成器创建的演示账号登录；看板导出按钮尚未接入已实现的导出API。**
 
 ## 安装与启动
 
@@ -64,7 +64,7 @@ uv run python run.py
 
 `/` 在浏览器端根据账号角色跳转。正式模板位于 `src/taces/presentation/templates/`，页面取数统一经过 `static/js/api.js`，Mock 数据集中在 `static/js/mock.js`。`USE_MOCK=true` 时，页面中的登录、统计、配置和日志均为模拟交互，不代表真实库中的账号或数据。
 
-切换真实接口的入口是 `src/taces/presentation/static/js/api.js` 的 `USE_MOCK`。目前尚未完成整页真实联调，单独切换该值不代表所有页面行为已验收。真实后端可通过 HTTP 客户端与自动化测试使用，字段及错误码见 [API_CONTRACT.md](docs/API_CONTRACT.md)，账号权限见 [AUTH.md](docs/AUTH.md)。
+真实接口入口是 `src/taces/presentation/static/js/api.js`，`USE_MOCK` 默认为 `false`，静态调试时可手动启用Mock。真实登录、Cookie会话与四个启用演示账号的角色跳转已有回归，其他页面边缘交互仍需继续验收。真实后端也可通过HTTP客户端与自动化测试使用，字段及错误码见 [API_CONTRACT.md](docs/API_CONTRACT.md)，账号权限见 [AUTH.md](docs/AUTH.md)。
 
 ## 数据与发布规则
 
@@ -100,15 +100,15 @@ Flask 负责表现层，业务与数据层不依赖 Flask。纯隐私计算位�
 ```powershell
 uv run python -m pytest -q --cov=taces --cov-report=term-missing
 uv run python -m pytest -q tests/integration/test_test_data.py
-node --test tests/js/config.test.cjs
+node --test tests/js/board.test.cjs tests/js/config.test.cjs tests/js/login.test.cjs
 
 # 复核已生成的数据，不改演示库；首次需先生成默认数据集
 uv run python scripts/generate_test_data.py --verify-only tests/experiments/output/testdata
 ```
 
-Python 测试使用临时库；系统测试包含真实本地 HTTP 闭环。JS 回归需要 Node.js，涵盖配置页请求与真实 API/Mock 的衔接。数据校验另检查阈值、评分/文本边界、权限、缓存、预算、导出及性能。
+Python 测试使用临时库；系统测试包含真实本地 HTTP 闭环。JS 回归需要 Node.js，涵盖配置页请求与真实API/Mock的衔接，以及真实登录、会话和角色跳转。数据校验另检查阈值、评分/文本边界、权限、缓存、预算、导出及性能。
 
-已完成 Windows 本地验证；Linux 双平台对照、长期运行与整页真实联调尚未验收。文档更新不代表重新运行全部业务测试，执行记录应注明实际命令与范围。
+已完成 Windows 本地验证；Linux双平台对照、长期运行及全部页面边缘交互尚未验收。文档更新不代表重新运行全部业务测试，执行记录应注明实际命令与范围。
 
 ## 版本控制
 

@@ -51,14 +51,14 @@
     });
 
     const ratings = data.distribution.reduce((sum, bin) => sum + bin.count, 0);
-    setText('ratingCount', `${f.int(ratings)} 条单项评分`);
+    setText('ratingCount', `${f.int(ratings)} 份有效评价`);
     const histogram = el('histogram');
     const draw = () => window.Charts.bars(histogram, {
       labels: data.distribution.map((bin) => `${bin.score} 分`),
       values: data.distribution.map((bin) => bin.count),
       format: f.int,
       height: 208,
-      unit: ' 条',
+      unit: ' 份',
     });
     draw();
     const redrawAll = () => {
@@ -111,15 +111,20 @@
     state.classList.add('refused');
     state.hidden = false;
 
-    setText('refusedTitle', `还差 ${f.int(data.shortfall)} 份评价才能出数`);
-    setText('refusedWhy',
-      `有效评价 ${f.int(data.sample)} 份，没到 k=${f.int(data.threshold)}。`
-      + '闸门在这一步挡住整页，均值、分布、维度对比和词频都不返回。');
+    const exhausted = data.reason === 'budget_exhausted';
+    setText('refusedTitle', exhausted
+      ? '预算已用完，暂时没有可查看的发布结果'
+      : `还差 ${f.int(data.shortfall)} 份评价才能出数`);
+    setText('refusedWhy', exhausted
+      ? '这门课尚无已保存的发布结果，剩余预算不足以发布新结果。请联系管理员调整预算。'
+      : `有效评价 ${f.int(data.sample)} 份，没到 k=${f.int(data.threshold)}。`
+        + '闸门在这一步挡住整页，均值、分布、维度对比和词频都不返回。');
 
     const facts = el('refusedFacts');
     facts.textContent = '';
     [['门槛 k', data.threshold], ['当前 n', data.sample],
-     ['缺口', data.shortfall], ['本次扣费', '0.00']].forEach(([label, value]) => {
+     exhausted ? ['可用快照', '暂无'] : ['缺口', data.shortfall],
+     ['本次扣费', '0.00']].forEach(([label, value]) => {
       const dt = document.createElement('dt');
       dt.textContent = label;
       const dd = document.createElement('dd');

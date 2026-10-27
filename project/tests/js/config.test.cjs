@@ -58,8 +58,7 @@ async function pageSaveBody() {
 
 test('the configuration page produces a request accepted by the real authenticated API', async () => {
   const body = await pageSaveBody();
-  const python = process.env.TACES_TEST_PYTHON || path.join(project, '.venv',
-    process.platform === 'win32' ? 'Scripts/python.exe' : 'bin/python');
+  const python = process.env.TACES_TEST_PYTHON || (process.platform === 'win32' ? 'python' : 'python3');
   const result = spawnSync(python, ['-c', `
 import json, sys
 from pathlib import Path

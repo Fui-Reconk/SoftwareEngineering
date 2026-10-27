@@ -6,12 +6,11 @@ TACES（Trusted Anonymous Course Evaluation System）是本仓库的课程项目
 
 ## 本机运行
 
-从仓库根目录执行：
+配置好 Python 和项目依赖后，从仓库根目录执行：
 
-```powershell
-Set-Location project
-uv sync
-uv run python run.py
+```bash
+cd project
+python run.py
 ```
 
 首次使用需要初始化数据库，或生成并安装合成演示数据。具体命令、账号和测试方法见 [项目说明](project/README.md) 与 [测试数据工具说明](project/scripts/README.md)。

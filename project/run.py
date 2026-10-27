@@ -1,4 +1,4 @@
-"""Local entry point; run with the project's virtual-environment interpreter."""
+"""Local entry point; run with a configured Python interpreter."""
 
 from pathlib import Path
 import sys

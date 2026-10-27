@@ -4,7 +4,7 @@
 
 本文说明后端能力、层间协作、数据与权限边界，以及已有验证和未验收范围。
 账号操作见 [AUTH.md](AUTH.md)，业务字段见 [API_CONTRACT.md](API_CONTRACT.md)。
-除命令明确切换目录外，文件路径与 PowerShell 命令均相对仓库根目录。
+除命令明确切换目录外，文件路径与命令均相对仓库根目录。
 
 ## 1. 当前状态与依据
 
@@ -174,12 +174,11 @@ DDL、版本号与事务内的数据改变一起回滚；失败可能留下空�
 
 新库从仓库根进入 project/ 执行：
 
-~~~powershell
-Set-Location project
-uv sync
-uv run python -m flask --app run.py init-db
-uv run python -m flask --app run.py create-admin --username admin
-uv run python run.py
+~~~bash
+cd project
+python -m flask --app run.py init-db
+python -m flask --app run.py create-admin --username admin
+python run.py
 ~~~
 
 create-admin 隐藏输入并确认密码，仅空账号表可首次引导，没有预置密码。
@@ -190,17 +189,16 @@ Invoke-RestMethod http://127.0.0.1:5000/api/health
 Invoke-RestMethod http://127.0.0.1:5000/api/ready
 ~~~
 
-uv 方式无需改写虚拟环境解释器路径；尚未在 Linux 验收。
-在project/执行uv sync创建或同步本机虚拟环境；pyproject.toml与requirements.txt维护直接依赖声明，uv.lock由本机安装时生成且不入库。tzdata提供Windows时区数据，ReportLab生成PDF，pypdf用于文档回归校验。
+使用配置好依赖的 Python 环境运行；不要求特定的环境管理工具。`pyproject.toml` 与 `requirements.txt` 维护直接依赖声明，tzdata提供Windows时区数据，ReportLab生成PDF，pypdf用于文档回归校验。Linux 尚未验收。
 Cookie/CSRF/登录限流/密码规则详见 AUTH.md；HTTPS 与代理部署仍需独立联调。
 
 ## 8. 测试与验证记录
 
 共享测试与 pytest.ini 纳入版本库；数据库、覆盖率和实验输出不提交。从 project/ 执行：
 
-~~~powershell
-uv run python -m pytest -q --cov=taces --cov-report=term-missing --tb=short
-uv run python -m pytest -q tests/integration/test_test_data.py
+~~~bash
+python -m pytest -q --cov=taces --cov-report=term-missing --tb=short
+python -m pytest -q tests/integration/test_test_data.py
 node --test tests/js/board.test.cjs tests/js/config.test.cjs tests/js/login.test.cjs tests/js/shell.test.cjs
 ~~~
 

@@ -94,8 +94,7 @@ let diagnostics = '';
 
 before(async () => {
   // Run a real HTTP server and normal salted password hashing on temporary DBs.
-  const python = process.env.TACES_TEST_PYTHON || path.join(project, '.venv',
-    process.platform === 'win32' ? 'Scripts/python.exe' : 'bin/python');
+  const python = process.env.TACES_TEST_PYTHON || (process.platform === 'win32' ? 'python' : 'python3');
   server = spawn(python, ['-u', '-c', `
 import sys
 from pathlib import Path
@@ -152,7 +151,7 @@ with TemporaryDirectory(prefix='taces-page-login-') as directory:
 });
 
 after(async () => {
-  if (!server) return;
+  if (!server || !server.pid) return;
   server.stdin.end();
   let timeout;
   try {

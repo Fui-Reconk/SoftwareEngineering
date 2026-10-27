@@ -2,18 +2,18 @@
 
 以下命令均以 `project/` 为当前目录，不增加依赖。
 
-```powershell
+```bash
 # 生成、自动验证，然后备份并替换本机 db/（先停止正在运行的演示服务）
-uv run python scripts/generate_test_data.py --check --install-demo
+python scripts/generate_test_data.py --check --install-demo
 
 # 仅生成独立数据，不替换 db/
-uv run python scripts/generate_test_data.py --output tests/experiments/output/second --check
+python scripts/generate_test_data.py --output tests/experiments/output/second --check
 
 # 原数据不动，在临时副本中重新验证；失败退出码为 1
-uv run python scripts/generate_test_data.py --verify-only tests/experiments/output/testdata
+python scripts/generate_test_data.py --verify-only tests/experiments/output/testdata
 
 # 小规模快速生成；0 表示不生成性能课程
-uv run python scripts/generate_test_data.py --output tests/experiments/output/small --performance-rows 0 --seed 42 --check
+python scripts/generate_test_data.py --output tests/experiments/output/small --performance-rows 0 --seed 42 --check
 ```
 
 默认产物在 `tests/experiments/output/testdata/`，已被现有规则忽略，不提交数据库、密码、评价码或报告。目标目录必须不存在，重复执行会报错；重新生成时使用新的 `--output`。中途失败可能保留不完整目录，只有最后写出 `manifest.json` 才算生成完毕。
@@ -30,13 +30,13 @@ uv run python scripts/generate_test_data.py --output tests/experiments/output/sm
 | 审计员 | `demo_auditor` | 同上 |
 | 停用账号，登录预期失败 | `demo_disabled` | 同上 |
 
-数据库中的 `password_hash` 是正常的带盐scrypt散列，不是登录口令；登录输入上表明文密码。页面默认连接真实后端，旧Mock口令 `taces2026` 不适用于真实账号。`demo_disabled` 为故意停用的反例，不能登录。
+登录输入上表明文密码。页面默认连接真实后端，旧Mock口令 `taces2026` 不适用于真实账号。`demo_disabled` 为故意停用的反例，不能登录。
 
 学生不登录。可用于学生演示的评价码在 `manifest.json` 的 `codes.student_demo`，属于 `at_k` 课程；提交后可演示从 5 份到 6 份、新版本重新发布。`codes.valid` 属于专门验证非法请求的空课程，`codes.submit` 的 5 枚码用于从零开始演示有效提交。
 
-```powershell
-(Get-Content tests/experiments/output/testdata/manifest.json -Raw | ConvertFrom-Json).codes.student_demo
-uv run python run.py
+```bash
+python -c "import json; print(json.load(open('tests/experiments/output/testdata/manifest.json', encoding='utf-8'))['codes']['student_demo'])"
+python run.py
 ```
 
 前端 `src/taces/presentation/static/js/api.js` 的 `USE_MOCK` 默认为 `false`，页面可使用安装后的真实账号与数据。手动启用Mock后读取的是独立模拟凭证和课程，不会校验数据库账号。
@@ -77,6 +77,6 @@ uv run python run.py
 
 工具自身的回归测试：
 
-```powershell
-uv run python -m pytest -q tests/integration/test_test_data.py
+```bash
+python -m pytest -q tests/integration/test_test_data.py
 ```

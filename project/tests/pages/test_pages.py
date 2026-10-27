@@ -24,9 +24,11 @@ def test_login_page_is_html_with_its_copy(app):
     assert response.status_code == 200
     assert response.mimetype == "text/html"
     body = response.get_data(as_text=True)
-    assert "<h1" in body
+    assert "<h1>教职工登录</h1>" in body
     assert "TACES" in body
-    assert "学生不用登录" in body
+    assert 'id="loginForm"' in body
+    assert 'name="username"' in body
+    assert 'name="password"' in body
 
 
 @pytest.mark.parametrize("path", ["/", "/student"])

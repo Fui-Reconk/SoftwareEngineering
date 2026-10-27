@@ -51,10 +51,9 @@
 
 以 `project/` 为当前目录：
 
-```powershell
-uv sync
-uv run python run.py
-uv run python -m pytest -q tests/pages tests/system/test_entrypoint.py
+```bash
+python run.py
+python -m pytest -q tests/pages tests/system/test_entrypoint.py
 node --test tests/js/board.test.cjs tests/js/config.test.cjs tests/js/login.test.cjs tests/js/shell.test.cjs
 ```
 

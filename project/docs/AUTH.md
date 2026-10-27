@@ -2,20 +2,20 @@
 
 本模块提供教师、管理员、审计员的账号和会话，以及课程元信息的归属校验。学生凭评价码匿名参与，不建立学生登录账号。课程、匿名提交、统计、配置、审计和导出接口均已实现；整体接口见 [API_CONTRACT.md](API_CONTRACT.md) 与 [BACKEND.md](BACKEND.md)。
 
-登录及角色页面已实现，当前默认连接真实后端；页面状态见 [FRONTEND.md](FRONTEND.md)。本文命令均以 `project/` 为工作目录，先执行 `uv sync`。
+登录及角色页面已实现，当前默认连接真实后端；页面状态见 [FRONTEND.md](FRONTEND.md)。本文命令均以 `project/` 为工作目录。
 
 ## 初始化与升级
 
 全新数据库执行：
 
-```powershell
-uv run python -m flask --app run.py init-db
+```bash
+python -m flask --app run.py init-db
 ```
 
 已有 v1/v2 数据库先停止服务并备份三个库文件，再显式执行：
 
-```powershell
-uv run python -m flask --app run.py upgrade-db
+```bash
+python -m flask --app run.py upgrade-db
 ```
 
 当前三库结构版本为 v3，共15张表。v1升级会补齐三个账号表与四个工作流表；v2升级补齐工作流表，保留已有数据。旧评价窗口与旧码在迁移时默认关闭，须由管理员重新配置窗口并发行新码。DDL 和版本更新同事务提交，失败整体回滚。
@@ -24,14 +24,14 @@ uv run python -m flask --app run.py upgrade-db
 
 首次管理员通过终端创建：
 
-```powershell
-uv run python -m flask --app run.py create-admin --username admin
+```bash
+python -m flask --app run.py create-admin --username admin
 ```
 
 随后隐藏输入密码并确认。密码为 12–128 个字符；用户名为 3–64 位英文字母、数字、
 点、下划线或短横线，存储时转小写，因此大小写不区分。空库初始化不会创建默认账号或密码；合成演示账号由 [数据生成器](../scripts/README.md) 显式创建。
 此命令仅允许账号表为空时执行；其他账号由已登录的管理员创建。
-Werkzeug 的直接依赖已列入 `pyproject.toml` 与 `requirements.txt`；安装工具按声明解析版本，生成的 `uv.lock` 只在本地保留。
+Werkzeug 的直接依赖已列入 `pyproject.toml` 与 `requirements.txt`；安装工具按声明解析版本。
 
 ## 权限
 
@@ -117,8 +117,8 @@ CSRF 值由随机会话值通过 HMAC 派生，不是身份或角色凭证。
 
 测试和 `pytest.ini` 已随 `2c5b44d` 纳入版本库，共享测试不得为单方改动而放宽断言。可运行：
 
-```powershell
-uv run python -m pytest -q --cov=taces --cov-report=term-missing
+```bash
+python -m pytest -q --cov=taces --cov-report=term-missing
 ```
 
 测试命令运行于临时库，不使用本机演示库。实际命令、结果和未运行项记录在执行日志或提交说明中；历史覆盖率不代表本轮重跑。

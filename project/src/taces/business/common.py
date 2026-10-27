@@ -13,7 +13,7 @@ def now():
 
 
 def text_value(value, *, maximum=200, minimum=1):
-    if not isinstance(value, str) or not minimum <= len(value) <= maximum:
+    if not isinstance(value, str) or not minimum <= len(value) <= maximum or "\x00" in value:
         raise invalid()
     try:
         value.encode("utf-8")

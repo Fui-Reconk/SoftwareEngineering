@@ -11,6 +11,7 @@ from .auth import auth
 from .health import health
 from .pages import pages
 from .courses import courses_admin
+from .submissions import submissions
 
 
 def register(app: Flask) -> None:
@@ -18,3 +19,4 @@ def register(app: Flask) -> None:
     app.register_blueprint(auth, url_prefix="/api")
     app.register_blueprint(pages)
     app.register_blueprint(courses_admin, url_prefix="/api")
+    app.register_blueprint(submissions, url_prefix="/api")

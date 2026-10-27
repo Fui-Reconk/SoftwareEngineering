@@ -14,7 +14,8 @@
 | 账号权限，第 2a 片 | 已实现登录、退出、改密、账号管理、角色与课程归属 | src/taces/business/auth、presentation/routes/auth.py（相对 project/） |
 | 数据库 | 当前 schema 版本为 3，三库共 15 张表 | data/database.py 的 SCHEMA_VERSION / TABLES |
 | 课程与评价码，第 2b 片 | 已实现管理员课程创建/修改、教师分配、评价窗口与随机评价码批量生成 | 本文第 9 节 |
-| 匿名提交、统计发布、配置查询、导出 | 待实现，相应 business 包目前为空 | 本文第 9 节 |
+| 匿名提交，第3片 | 已实现无会话验码与原子提交，不要求CSRF | business/submission/service.py、routes/submissions.py |
+| 统计发布、配置查询、导出 | 按后续分段实施 | 本文第9节 |
 | 前端 | 已有独立静态样例 project/demo，尚未接入 Flask | [FRONTEND.md](FRONTEND.md) |
 
 需求编号沿用 SRS 的 FR1–FR10、NFR1–NFR7。需求原稿在 class2/assets/docs/，用例在
@@ -93,6 +94,8 @@ GET 不写入业务数据；已认证的越权拒绝可以独立写入审计。
 | POST /api/admin/courses | 管理员+CSRF | 创建课程、维度、窗口与每课预算，201 |
 | PATCH /api/admin/courses/<course_id> | 管理员+CSRF | 修改课程名/学期/归属/截止时间 |
 | POST /api/admin/courses/<course_id>/evaluation-codes | 管理员+CSRF | 批量发码，201；只此响应可得明文 |
+| POST /api/evaluation-codes/verify | 学生评价码，无会话/CSRF | 校验不耗码；200 valid/原因 |
+| POST /api/submissions | 学生评价码，无会话/CSRF | 原子评分写入与耗码，201 submissionId |
 
 账号响应仅包含 user_id、username、role、is_active、created_at。接口详情、JSON 字段见 AUTH.md。
 员工账号角色为 admin / teacher / auditor；学生使用匿名评价码，不提供学生注册/登录接口。
@@ -206,7 +209,7 @@ Set-Location .\project
 .\.venv\Scripts\python.exe -m pytest -q --cov=taces --cov-report=term-missing --tb=short
 ~~~
 
-只读校验整理阶段的历史结果：208 passed、0 failed、0 skipped，语句覆盖率98%（569条语句、14条未覆盖）。第2b片当前完整测试：247 passed、0 failed、0 skipped，315.14秒；此段未重新统计覆盖率。
+只读校验整理阶段的历史结果：208 passed、0 failed、0 skipped，语句覆盖率98%（569条语句、14条未覆盖）。第2b片完整测试247通过；第3片当前完整测试275 passed、0 failed、0 skipped，398.81秒；这两段未重新统计覆盖率。
 只读校验阶段保留原有176项断言并新增32项回归；对齐前端与uv提交后的新基线为217项，第2b片新增30项课程/迁移/边界回归。具体命令、红绿过程与未运行项保存在本地执行日志；不再额外生成 reviewer 交接文档。
 每次记录执行目录、命令、通过/失败/跳过、deselected/errors、回归场景和未执行原因。
 
@@ -283,3 +286,12 @@ course_id允许1–64位英文字母、数字、点、短横线、下划线；�
 维度数量1–10、名称唯一、正权重合计为1；不支持在已有课程中隐式更换维度。PATCH支持name/teacher_id/term/closes_at，closes_at=0立即关闭。
 发码POST /api/admin/courses/<id>/evaluation-codes，JSON为count（1–1000）与可选expires_at（不晚于课程截止）。返回codes数组，每码128位熵、32位小写十六进制，仅响应可得明文，数据库只留SHA256摘要。
 创建/转移/发码均管理员权限+CSRF，写入与审计同一事务；当前/api/courses原字段不加别名。发码不记录学生姓名或把码关联到评价记录，分发由管理员离线完成。
+
+
+## 13. 匿名提交（第3片）
+
+两学生接口仅接收JSON，不读取员工身份，也不要求X-CSRF-Token或登录Cookie。verify返回的course仍按学生契约使用code/title/teacher/dimensions，不改变已有/api/courses员工课程列表的字段。
+评价码允许32位大小写十六进制，规范为小写后取SHA256。未知或畸形码校验为200 valid=false/unknown；已用为used；过期或关闭窗口为expired。验码不耗码。
+提交必须覆盖课程全部维度且名称唯一，score为严格整数1–5（拒绝bool/浮点/字符串），openText可省略或为空，最多500字符，拒绝无效Unicode和NUL。
+写事务原子执行条件耗码、评分/开放题写入及课程数据版本+1；写入失败均回滚。两请求同时使用一码仅一个201，另一409 CODE_USED；过期为409 WINDOW_CLOSED，未知码400 INVALID_CODE。
+评价库不增加code_hash/student/user/IP/提交时间字段；身份表不加submission_id；匿名验码和个人提交不写审计时间，避免按日志关联身份。

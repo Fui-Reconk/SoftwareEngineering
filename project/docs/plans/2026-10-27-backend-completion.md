@@ -36,15 +36,15 @@
 ### Task 1: 课程、评价码与v3迁移
 **Files:** data/database.py、data/schema/workflow.sql、business/courses/service.py、business/common.py、routes/courses.py、routes/__init__.py；新tests/integration/test_courses.py、test_workflow_migration.py。
 **Interfaces:** CourseService(db,auth).create(token,body)、update(token,id,body)、issue_codes(token,id,count,expires_at=None)；返回原course形状或一次性明文codes。v3新增course_state(截止/数据版本)、code_state(码过期)、privacy_policy(默认epsilon0.1,k5,total4,revision1)、agg_result(课程/数据/策略/JSON发布快照)。
-- [ ] 写HTTP/迁移失败、保存旧核心数据、重复/错教师、维度/窗口/批量码、只存摘要和审计回滚红测。
-- [ ] 观察真实红测；实现最小业务与v1/v2→v3原子迁移；旧测试仅将当前版本2改为SCHEMA_VERSION。
-- [ ] 定向与全量绿测；独立review-agent审查此段全部diff，修复后commit。
+- [x] 写HTTP/迁移失败、保存旧核心数据、重复/错教师、维度/窗口/批量码、只存摘要和审计回滚红测。
+- [x] 观察真实红测；实现最小业务与v1/v2→v3原子迁移；旧测试仅将当前版本2改为SCHEMA_VERSION。
+- [x] 定向与全量绿测；独立review-agent审查此段全部diff，修复后commit。
 
 ### Task 2: 无会话匿名提交
 **Files:** business/submission/service.py、routes/submissions.py、registry；tests/integration/test_submissions.py。
 **Interfaces:** verify(code)->{valid,reason?/course?}；submit(code,ratings,openText='')->{submissionId}，整笔原子写入/码消费/数据版本++。
-- [ ] 写无CSRF、无效/已用/过期、完整维度整数分/文本、失败不耗码、两并发只一成功、匿名字段与无个人审计的红测。
-- [ ] 实现并转绿；全量回归、review-agent、修复、commit。
+- [x] 写无CSRF、无效/已用/过期、完整维度整数分/文本、失败不耗码、两并发只一成功、匿名字段与无个人审计的红测。
+- [x] 实现并转绿；全量回归、review-agent、修复、commit。
 
 ### Task 3: 纯隐私计算与原子发布
 **Files:** business/privacy/mechanism.py、business/stats/service.py、routes/statistics.py、registry；unit/test_privacy.py、integration/test_statistics.py。

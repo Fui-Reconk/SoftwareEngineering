@@ -99,13 +99,13 @@ Flask 负责表现层，业务与数据层不依赖 Flask。纯隐私计算位�
 ```bash
 python -m pytest -q --cov=taces --cov-report=term-missing
 python -m pytest -q tests/integration/test_test_data.py
-node --test tests/js/board.test.cjs tests/js/config.test.cjs tests/js/login.test.cjs tests/js/shell.test.cjs
+node --test tests/js/board.test.cjs tests/js/config.test.cjs tests/js/evaluate.test.cjs tests/js/login.test.cjs tests/js/shell.test.cjs
 
 # 复核已生成的数据，不改演示库；首次需先生成默认数据集
 python scripts/generate_test_data.py --verify-only tests/experiments/output/testdata
 ```
 
-Python 测试使用临时库；系统测试包含真实本地 HTTP 闭环。JS 回归需要 Node.js，涵盖配置页请求与真实API/Mock的衔接，以及真实登录、会话和角色跳转。涉及后端的 JS 测试使用 PATH 中的 Python（Windows 为 `python`，其他系统为 `python3`）；也可通过环境变量 `TACES_TEST_PYTHON` 指定解释器。数据校验另检查阈值、评分/文本边界、权限、缓存、预算、导出及性能。
+Python 测试使用临时库；系统测试包含真实本地 HTTP 闭环。JS 回归需要 Node.js，涵盖配置页请求、登录会话与角色跳转，以及学生提交后的返回行为。涉及后端的 JS 测试使用 PATH 中的 Python（Windows 为 `python`，其他系统为 `python3`）；也可通过环境变量 `TACES_TEST_PYTHON` 指定解释器。数据校验另检查阈值、评分/文本边界、权限、缓存、预算、导出及性能。
 
 已完成 Windows 本地验证；Linux双平台对照、长期运行及全部页面边缘交互尚未验收。文档更新不代表重新运行全部业务测试，执行记录应注明实际命令与范围。
 

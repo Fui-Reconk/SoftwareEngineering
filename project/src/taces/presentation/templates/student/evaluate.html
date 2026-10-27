@@ -25,9 +25,11 @@
   <p class="hint">分数和文字不关联，原文不会出现在任何给教师的页面上。</p>
 </section>
 
-<section class="card" id="receipt" hidden>
-  <h1>已提交</h1>
+<section class="card" id="receipt" tabindex="-1" aria-labelledby="receiptTitle" hidden>
+  <h1 id="receiptTitle">已提交</h1>
   <p class="receipt-note">这份评价收下了，不能再改。</p>
+  <p class="receipt-countdown">5 秒后自动返回首页。</p>
+  <a class="btn primary receipt-return" href="{{ url_for('pages.student_code') }}">返回首页</a>
 </section>
 {% endblock %}
 

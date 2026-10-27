@@ -437,9 +437,12 @@ a:hover { text-decoration: underline; text-underline-offset: 3px; }
 .textarea { height: auto; padding: 10px 12px; line-height: 22px; resize: vertical; }
 .field-hint { font-size: var(--fs-small); color: var(--faint); }
 .receipt-note { margin-top: 8px; color: var(--muted); }
+.receipt-countdown { margin-top: 8px; color: var(--muted); font-size: var(--fs-small); }
+.receipt-return { margin-top: 24px; min-width: 160px; min-height: 48px; }
 
 @media (max-width: 480px) {
   .scale-row { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  .receipt-return { width: 100%; }
 }
 .student-evaluate .card-wide, .student-evaluate #receipt {
   width: min(680px, 100%); padding: 36px 40px; border: 0; border-radius: 12px;

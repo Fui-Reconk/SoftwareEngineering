@@ -96,6 +96,8 @@ def test_evaluate_page_renders_scale_and_receipt(app):
     assert "开放题" in body
     assert "500" in body
     assert "不能再改" in body
+    assert "5 秒后自动返回首页" in body
+    assert re.search(r'<a\b[^>]*href="/"[^>]*>\s*返回首页\s*</a>', body)
 
 
 def test_config_page_names_three_parameters_and_their_scope(app):

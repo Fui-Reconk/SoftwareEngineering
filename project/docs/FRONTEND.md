@@ -18,7 +18,7 @@
 | 登录 | `/login` | auth/login.html + pages/login.js |
 | 教师看板 | `/teacher/<course_id>` | teacher/board.html + pages/board.js |
 | 学生验码 | `/`、`/student` | student/code.html + pages/code.js，主按钮下提供教职工登录入口 |
-| 学生评分 | `/student/evaluate` | student/evaluate.html + pages/evaluate.js |
+| 学生评分 | `/student/evaluate` | student/evaluate.html + pages/evaluate.js，提交成功后可手动返回首页，或等待5秒自动返回 |
 | 隐私配置 | `/admin/config` | admin/config.html + pages/config.js |
 | 审计日志 | `/admin/audit` | admin/audit.html + pages/audit.js |
 
@@ -54,9 +54,9 @@
 ```bash
 python run.py
 python -m pytest -q tests/pages tests/system/test_entrypoint.py
-node --test tests/js/board.test.cjs tests/js/config.test.cjs tests/js/login.test.cjs tests/js/shell.test.cjs
+node --test tests/js/board.test.cjs tests/js/config.test.cjs tests/js/evaluate.test.cjs tests/js/login.test.cjs tests/js/shell.test.cjs
 ```
 
-页面测试检查路由、模板骨架与关键控件；Node回归执行真实配置页JS，并分别用真实后端与Mock验证请求保存回读。登录回归另外执行实际api.js、login.js和entry.js，对接临时库的真实HTTP服务，检查启用账号、错误密码、旧Mock口令及停用账号。shell回归覆盖三角色导航、当前页标记、空课程、失败/过期会话及移动抽屉切回桌面。侧栏已在1440/768/390宽度、长课程列表与390×320短屏上测量头尾固定和中部独立滚动；这不等同于全部页面的全面视觉验收。
+页面测试检查路由、模板骨架与关键控件；Node回归执行真实配置页JS，并分别用真实后端与Mock验证请求保存回读。登录回归另外执行实际api.js、login.js和entry.js，对接临时库的真实HTTP服务，检查启用账号、错误密码、旧Mock口令及停用账号。学生评分回归检查提交成功后5秒返回，以及普通失败和失效码处理。shell回归覆盖三角色导航、当前页标记、空课程、失败/过期会话及移动抽屉切回桌面。侧栏已在1440/768/390宽度、长课程列表与390×320短屏上测量头尾固定和中部独立滚动；这不等同于全部页面的全面视觉验收。
 
-已通过真实浏览器验证生成数据副本上的教师、管理员与审计员登录和相应页面，以及预算耗尽拒绝；全部启用账号的Cookie会话/角色跳转另有真实HTTP回归。后续仍需覆盖学生完整提交、更多缓存边缘状态、导出按钮及桌面/平板/手机交互。登录故障修复将默认取数切换至真实API，没有修改数据库密码或降低密码散列强度。
+已通过真实浏览器验证生成数据副本上的教师、管理员与审计员登录和相应页面，以及预算耗尽拒绝；全部启用账号的Cookie会话/角色跳转另有真实HTTP回归。学生验码、评分、提交及手动或自动返回已在临时合成库中通过浏览器验证；更多缓存边缘状态、导出按钮及页面交互仍需继续验收。登录故障修复将默认取数切换至真实API，没有修改数据库密码或降低密码散列强度。

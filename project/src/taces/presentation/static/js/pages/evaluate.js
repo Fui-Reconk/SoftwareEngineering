@@ -89,7 +89,10 @@
       });
       sessionStorage.removeItem('taces.verify');
       document.querySelector('.card-wide').hidden = true;
-      document.getElementById('receipt').hidden = false;
+      const receipt = document.getElementById('receipt');
+      receipt.hidden = false;
+      receipt.focus();
+      window.setTimeout(() => window.location.assign('/'), 5000);
     } catch (failure) {
       if (failure.status === 409) {
         // 码在提交前被用掉或窗口关了：回上一步，让学生看见原因

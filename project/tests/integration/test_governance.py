@@ -132,3 +132,17 @@ def test_audit_preserves_microsecond_filter_boundaries(staff, boundary):
     response = staff["client"].get("/api/admin/audit?" + query)
     assert response.status_code == 200
     assert response.json["data"]["entries"] == []
+
+
+def test_config_rejects_extreme_decimal_exponent_with_field(staff):
+    response = staff["client"].patch("/api/admin/config", data='{"epsilon":1e999999999999999999999999}',
+        content_type="application/json", headers=staff["headers"])
+    assert response.status_code == 422
+    assert response.json["error"]["field"] == "epsilon"
+
+
+def test_config_returns_safe_error_field_for_invalid_unicode_key(staff):
+    response = staff["client"].patch("/api/admin/config", data='{"\\ud800":1}',
+        content_type="application/json", headers=staff["headers"])
+    assert response.status_code == 422
+    assert response.json["error"]["field"] == "request"

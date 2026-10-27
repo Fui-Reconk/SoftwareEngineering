@@ -14,6 +14,10 @@ UNITS = {"epsilon": "ε", "k": "份", "epsilonTotal": "ε"}
 
 
 def invalid_value(field, message="参数超出范围或格式不合法。"):
+    try:
+        field.encode("utf-8")
+    except UnicodeEncodeError:
+        field = "request"
     return ServiceError(422, "INVALID_VALUE", message, field=field)
 
 

@@ -10,8 +10,8 @@ TACES（Trusted Anonymous Course Evaluation System）是本仓库的课程项目
 
 ```powershell
 Set-Location project
-uv sync --locked
-uv run --locked python run.py
+uv sync
+uv run python run.py
 ```
 
 首次使用需要初始化数据库，或生成并安装合成演示数据。具体命令、账号和测试方法见 [项目说明](project/README.md) 与 [测试数据工具说明](project/scripts/README.md)。
@@ -22,6 +22,6 @@ uv run --locked python run.py
 - `project/src/`：正式应用、模板、静态资源和 SQL 结构。
 - `project/tests/`、`project/scripts/`：共享测试与可复现的数据生成/校验工具。
 - `project/docs/`：当前架构、认证、接口契约和前端说明。
-- `project/pyproject.toml`、`project/uv.lock`、`project/requirements.txt`：依赖声明、锁定结果和兼容安装清单。
+- `project/pyproject.toml`、`project/requirements.txt`：依赖声明和兼容安装清单。
 
-课程原始资料与手工交付文档、AI 工作上下文、历史实施计划及旧静态原型仅在本地保留。数据库、备份、生成的数据清单、测试报告、虚拟环境和缓存不提交。忽略规则不会删除这些本地文件。
+课程原始资料与手工交付文档、AI 工作上下文、历史实施计划及旧静态原型仅在本地保留。数据库、备份、生成的数据清单、测试报告、虚拟环境、uv.lock和缓存不提交。忽略规则不会删除这些本地文件。

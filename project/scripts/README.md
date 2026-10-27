@@ -4,16 +4,16 @@
 
 ```powershell
 # 生成、自动验证，然后备份并替换本机 db/（先停止正在运行的演示服务）
-uv run --locked python scripts/generate_test_data.py --check --install-demo
+uv run python scripts/generate_test_data.py --check --install-demo
 
 # 仅生成独立数据，不替换 db/
-uv run --locked python scripts/generate_test_data.py --output tests/experiments/output/second --check
+uv run python scripts/generate_test_data.py --output tests/experiments/output/second --check
 
 # 原数据不动，在临时副本中重新验证；失败退出码为 1
-uv run --locked python scripts/generate_test_data.py --verify-only tests/experiments/output/testdata
+uv run python scripts/generate_test_data.py --verify-only tests/experiments/output/testdata
 
 # 小规模快速生成；0 表示不生成性能课程
-uv run --locked python scripts/generate_test_data.py --output tests/experiments/output/small --performance-rows 0 --seed 42 --check
+uv run python scripts/generate_test_data.py --output tests/experiments/output/small --performance-rows 0 --seed 42 --check
 ```
 
 默认产物在 `tests/experiments/output/testdata/`，已被现有规则忽略，不提交数据库、密码、评价码或报告。目标目录必须不存在，重复执行会报错；重新生成时使用新的 `--output`。中途失败可能保留不完整目录，只有最后写出 `manifest.json` 才算生成完毕。
@@ -34,7 +34,7 @@ uv run --locked python scripts/generate_test_data.py --output tests/experiments/
 
 ```powershell
 (Get-Content tests/experiments/output/testdata/manifest.json -Raw | ConvertFrom-Json).codes.student_demo
-uv run --locked python run.py
+uv run python run.py
 ```
 
 现有前端 `src/taces/presentation/static/js/api.js` 的 `USE_MOCK` 仍为 `true`。本工具生成、安装和验证真实后端数据；页面沿用原有 Mock 时不会读取这些数据库。数据工具不修改前端文件。
@@ -76,5 +76,5 @@ uv run --locked python run.py
 工具自身的回归测试：
 
 ```powershell
-uv run --locked python -m pytest -q tests/integration/test_test_data.py
+uv run python -m pytest -q tests/integration/test_test_data.py
 ```

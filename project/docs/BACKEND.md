@@ -176,10 +176,10 @@ DDL、版本号与事务内的数据改变一起回滚；失败可能留下空�
 
 ~~~powershell
 Set-Location project
-uv sync --locked
-uv run --locked python -m flask --app run.py init-db
-uv run --locked python -m flask --app run.py create-admin --username admin
-uv run --locked python run.py
+uv sync
+uv run python -m flask --app run.py init-db
+uv run python -m flask --app run.py create-admin --username admin
+uv run python run.py
 ~~~
 
 create-admin 隐藏输入并确认密码，仅空账号表可首次引导，没有预置密码。
@@ -191,7 +191,7 @@ Invoke-RestMethod http://127.0.0.1:5000/api/ready
 ~~~
 
 uv 方式无需改写虚拟环境解释器路径；尚未在 Linux 验收。
-每个工作树在project/执行uv sync --locked同步其本地虚拟环境；pyproject.toml、requirements.txt和uv.lock同步维护。tzdata提供Windows时区数据，ReportLab生成PDF，pypdf用于文档回归校验。
+在project/执行uv sync创建或同步本机虚拟环境；pyproject.toml与requirements.txt维护直接依赖声明，uv.lock由本机安装时生成且不入库。tzdata提供Windows时区数据，ReportLab生成PDF，pypdf用于文档回归校验。
 Cookie/CSRF/登录限流/密码规则详见 AUTH.md；HTTPS 与代理部署仍需独立联调。
 
 ## 8. 测试与验证记录
@@ -199,8 +199,8 @@ Cookie/CSRF/登录限流/密码规则详见 AUTH.md；HTTPS 与代理部署仍�
 共享测试与 pytest.ini 纳入版本库；数据库、覆盖率和实验输出不提交。从 project/ 执行：
 
 ~~~powershell
-uv run --locked python -m pytest -q --cov=taces --cov-report=term-missing --tb=short
-uv run --locked python -m pytest -q tests/integration/test_test_data.py
+uv run python -m pytest -q --cov=taces --cov-report=term-missing --tb=short
+uv run python -m pytest -q tests/integration/test_test_data.py
 node --test tests/js/config.test.cjs
 ~~~
 

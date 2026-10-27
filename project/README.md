@@ -9,10 +9,21 @@
 以下命令均以 `project/` 为当前目录。需要 Python 3.12+ 和 uv；本项目为应用，通过 `run.py` 启动，不作为 Python 包安装。
 
 ```powershell
-uv sync --locked
+uv sync
 ```
 
-`pyproject.toml` 声明依赖，`uv.lock` 锁定版本；项目显式使用清华 PyPI 镜像。`requirements.txt` 保留直接依赖清单，供 pip 环境使用，版本锁定以 uv 为准。
+`pyproject.toml` 声明Python版本与直接依赖，`requirements.txt` 提供pip安装清单。项目显式使用清华PyPI镜像。`uv sync` 可在本机生成 `uv.lock`，该文件仅本地保留，不要求从仓库取得；安装时按依赖声明解析兼容版本。
+
+| 环境或依赖 | 要求/用途 |
+| --- | --- |
+| Python | 3.12+ |
+| Flask、Werkzeug | Web路由、模板、密码散列 |
+| tzdata | >=2026.5，提供Windows的上海时区数据 |
+| reportlab、pypdf | >=5.1.0 / >=6.21.2，生成PDF及校验导出内容 |
+| pytest、pytest-cov | Python测试与覆盖率 |
+| Node.js | 仅运行JS回归测试需要，应用启动不需要 |
+
+`pyproject.toml` 与 `requirements.txt` 是安装工具读取的声明，会随源码保留；虚拟环境、缓存与本机依赖锁文件不提交。
 
 选择下面一种数据准备方式。
 
@@ -21,8 +32,8 @@ uv sync --locked
 先停止运行中的演示服务，再执行：
 
 ```powershell
-uv run --locked python scripts/generate_test_data.py --check --install-demo
-uv run --locked python run.py
+uv run python scripts/generate_test_data.py --check --install-demo
+uv run python run.py
 ```
 
 生成器默认提供 25 门课、包含 1 万份性能样本的合成评价、演示账号和评价码，校验通过后安装到 `db/`，已有三库先备份。默认输出目录为 `tests/experiments/output/testdata/`，必须不存在；再次生成请指定新的 `--output`，例如 `--output tests/experiments/output/demo-2`。
@@ -32,9 +43,9 @@ uv run --locked python run.py
 ### 空库开始
 
 ```powershell
-uv run --locked python -m flask --app run.py init-db
-uv run --locked python -m flask --app run.py create-admin --username admin
-uv run --locked python run.py
+uv run python -m flask --app run.py init-db
+uv run python -m flask --app run.py create-admin --username admin
+uv run python run.py
 ```
 
 管理员密码通过终端隐藏输入。空库没有默认账号；其他员工账号、课程与评价码由管理员通过 API 创建。应用启动不会隐式建库或发码。已有 v1/v2 库须先停服务并备份三个文件，再执行 `upgrade-db`，不要用删库代替升级；当前结构版本为 v3。
@@ -69,7 +80,7 @@ uv run --locked python run.py
 ```text
 project/
 ├─ run.py                       应用入口
-├─ pyproject.toml / uv.lock      依赖声明与锁定版本
+├─ pyproject.toml               Python版本与直接依赖声明
 ├─ requirements.txt             pip 直接依赖清单
 ├─ src/taces/
 │  ├─ config.py                 运行配置
@@ -87,12 +98,12 @@ Flask 负责表现层，业务与数据层不依赖 Flask。纯隐私计算位�
 ## 测试
 
 ```powershell
-uv run --locked python -m pytest -q --cov=taces --cov-report=term-missing
-uv run --locked python -m pytest -q tests/integration/test_test_data.py
+uv run python -m pytest -q --cov=taces --cov-report=term-missing
+uv run python -m pytest -q tests/integration/test_test_data.py
 node --test tests/js/config.test.cjs
 
 # 复核已生成的数据，不改演示库；首次需先生成默认数据集
-uv run --locked python scripts/generate_test_data.py --verify-only tests/experiments/output/testdata
+uv run python scripts/generate_test_data.py --verify-only tests/experiments/output/testdata
 ```
 
 Python 测试使用临时库；系统测试包含真实本地 HTTP 闭环。JS 回归需要 Node.js，涵盖配置页请求与真实 API/Mock 的衔接。数据校验另检查阈值、评分/文本边界、权限、缓存、预算、导出及性能。
@@ -101,4 +112,4 @@ Python 测试使用临时库；系统测试包含真实本地 HTTP 闭环。JS �
 
 ## 版本控制
 
-源码、共享测试、SQL、依赖锁文件和当前维护文档正常跟踪。数据库及备份、测试/导出产物、账号与评价码清单、虚拟环境和缓存不提交。旧静态原型、本地 AI 上下文及历史实施计划仅本地保留。提交格式见 [COMMIT_CONVENTION.md](COMMIT_CONVENTION.md)。
+源码、共享测试、SQL、依赖声明和当前维护文档正常跟踪。数据库及备份、测试/导出产物、账号与评价码清单、虚拟环境、uv.lock和缓存不提交。旧静态原型、本地 AI 上下文及历史实施计划仅本地保留。提交格式见 [COMMIT_CONVENTION.md](COMMIT_CONVENTION.md)。

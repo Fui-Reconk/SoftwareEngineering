@@ -51,9 +51,9 @@
 以 `project/` 为当前目录：
 
 ```powershell
-uv sync --locked
-uv run --locked python run.py
-uv run --locked python -m pytest -q tests/pages tests/system/test_entrypoint.py
+uv sync
+uv run python run.py
+uv run python -m pytest -q tests/pages tests/system/test_entrypoint.py
 node --test tests/js/config.test.cjs
 ```
 

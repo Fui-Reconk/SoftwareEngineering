@@ -2,6 +2,8 @@
 
 import re
 
+import pytest
+
 
 def test_unknown_page_returns_html_for_browser(app):
     response = app.test_client().get("/not-a-route")
@@ -27,11 +29,36 @@ def test_login_page_is_html_with_its_copy(app):
     assert "学生不用登录" in body
 
 
-def test_entry_page_hands_off_to_the_browser(app):
-    response = app.test_client().get("/")
+@pytest.mark.parametrize("path", ["/", "/student"])
+def test_student_entry_shows_code_form_and_staff_login(app, path):
+    response = app.test_client().get(path)
     assert response.status_code == 200
     assert response.mimetype == "text/html"
-    assert "正在进入" in response.get_data(as_text=True)
+    body = response.get_data(as_text=True)
+    assert 'id="codeForm"' in body
+    assert "进入评教" in body
+    assert re.search(
+        r'<button\b[^>]*type="submit"[^>]*>\s*继续\s*</button>\s*'
+        r'<a\b[^>]*href="/login"[^>]*>\s*教职工登录\s*</a>', body
+    )
+    assert "js/pages/entry.js" not in body
+
+
+def test_staff_workspace_still_hands_off_to_the_browser(app):
+    response = app.test_client().get("/workspace")
+    assert response.status_code == 200
+    assert response.mimetype == "text/html"
+    body = response.get_data(as_text=True)
+    assert "正在进入" in body
+    assert "js/pages/entry.js" in body
+
+
+def test_login_page_links_back_to_student_entry(app):
+    body = app.test_client().get("/login").get_data(as_text=True)
+    assert re.search(
+        r'<button\b[^>]*type="submit"[^>]*>\s*登录\s*</button>\s*'
+        r'<a\b[^>]*href="/"[^>]*>\s*返回学生评教\s*</a>', body
+    )
 
 
 def test_board_renders_its_blocks(app):

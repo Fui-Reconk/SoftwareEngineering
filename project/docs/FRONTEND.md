@@ -14,15 +14,15 @@
 
 | 页面 | 路径 | 实现 |
 | --- | --- | --- |
-| 入口 | `/` | entry.html + pages/entry.js，浏览器读取会话并按角色跳转 |
+| 员工工作区分流 | `/workspace` | entry.html + pages/entry.js，浏览器读取会话并按角色跳转 |
 | 登录 | `/login` | auth/login.html + pages/login.js |
 | 教师看板 | `/teacher/<course_id>` | teacher/board.html + pages/board.js |
-| 学生验码 | `/student` | student/code.html + pages/code.js |
+| 学生验码 | `/`、`/student` | student/code.html + pages/code.js，主按钮下提供教职工登录入口 |
 | 学生评分 | `/student/evaluate` | student/evaluate.html + pages/evaluate.js |
 | 隐私配置 | `/admin/config` | admin/config.html + pages/config.js |
 | 审计日志 | `/admin/audit` | admin/audit.html + pages/audit.js |
 
-模板位于 `src/taces/presentation/templates/`，JS位于 `src/taces/presentation/static/js/`。员工页面共用 `base.html` 与 `shell.js`：会话守卫、CSRF元信息、课程列表、账号、退出和移动侧栏。会话Cookie只在 `/api` 路径发送，页面路由不从Cookie判断角色，入口分流在浏览器完成。
+模板位于 `src/taces/presentation/templates/`，JS位于 `src/taces/presentation/static/js/`。员工页面共用 `base.html` 与 `shell.js`：会话守卫、CSRF元信息、课程列表、账号、退出和移动侧栏。会话Cookie只在 `/api` 路径发送，页面路由不从Cookie判断角色，员工登录后的工作区分流在浏览器完成。
 
 ## 布局与取数
 

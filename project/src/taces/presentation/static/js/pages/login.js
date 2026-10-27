@@ -25,7 +25,7 @@
       });
       const next = new URLSearchParams(window.location.search).get('next');
       // 只接受站内绝对路径，并且拒绝 //host 这种协议相对地址（开放重定向）
-      const safe = next && next.startsWith('/') && !next.startsWith('//') ? next : '/';
+      const safe = next && next.startsWith('/') && !next.startsWith('//') ? next : '/workspace';
       window.location.assign(safe);
     } catch (failure) {
       showError(failure.status === 429

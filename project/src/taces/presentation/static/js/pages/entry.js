@@ -31,7 +31,7 @@
 
   go().catch(function (failure) {
     if (failure.status === 401) {
-      window.location.replace('/login?next=/');
+      window.location.replace('/login?next=/workspace');
       return;
     }
     note.textContent = '进不去，稍后再试。';

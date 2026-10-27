@@ -356,6 +356,11 @@ a:hover { text-decoration: underline; text-underline-offset: 3px; }
 .form-error { font-size: var(--fs-small); line-height: 19px; color: var(--negative); }
 
 .form .btn { height: 40px; }
+.form-link {
+  display: inline-flex; align-items: center; justify-self: center;
+  min-height: 44px; margin-top: -8px;
+  color: var(--accent); font-size: var(--fs-small); font-weight: 500;
+}
 .btn.primary { background: var(--accent); border-color: transparent; color: #ffffff; }
 .btn.primary:hover { background: #1a5c43; }
 .btn:disabled { background: var(--raised); border-color: var(--border); color: var(--faint); cursor: not-allowed; }

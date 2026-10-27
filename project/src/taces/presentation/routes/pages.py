@@ -10,8 +10,8 @@ from flask import Blueprint, render_template
 pages = Blueprint("pages", __name__)
 
 
-@pages.get("/")
-def entry():
+@pages.get("/workspace")
+def staff_entry():
     # Role-based landing happens in the browser: the session cookie is scoped
     # to /api, so a page route cannot read who is logged in.
     return render_template("entry.html")
@@ -28,6 +28,7 @@ def teacher_board(course_id: str):
 
 
 @pages.get("/student")
+@pages.get("/")
 def student_code():
     return render_template("student/code.html")
 

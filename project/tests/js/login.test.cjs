@@ -9,7 +9,7 @@ const project = path.resolve(__dirname, '../..');
 const scripts = path.join(project, 'src/taces/presentation/static/js');
 const password = 'Taces-demo-2026!';
 
-function loginPage(username, secret, fetch) {
+function loginPage(username, secret, fetch, search = '') {
   let submit;
   let destination;
   const button = { disabled: false };
@@ -29,7 +29,7 @@ function loginPage(username, secret, fetch) {
     },
     window: {
       location: {
-        search: '',
+        search,
         assign(value) { destination = value; },
         replace(value) { destination = value; },
       },
@@ -59,7 +59,32 @@ test('the default login page sends demo credentials to the server instead of the
   assert.equal(requests[0].options.credentials, 'include');
   assert.deepEqual(JSON.parse(requests[0].options.body), { username: 'demo_teacher', password });
   assert.equal(page.error.hidden, true);
-  assert.equal(page.destination(), '/');
+  assert.equal(page.destination(), '/workspace');
+});
+
+test('login respects a safe next destination and rejects a protocol-relative one', async () => {
+  const fetch = async () => ({ ok: true, json: async () => ({ data: {} }) });
+  const requested = loginPage('teacher', 'password', fetch, '?next=%2Fteacher%2Fcourse');
+  await requested.submit();
+  assert.equal(requested.destination(), '/teacher/course');
+
+  const external = loginPage('teacher', 'password', fetch, '?next=%2F%2Fexample.com');
+  await external.submit();
+  assert.equal(external.destination(), '/workspace');
+});
+
+test('an expired workspace session returns to login with the workspace as next', async () => {
+  let destination;
+  const context = vm.createContext({
+    document: { getElementById: () => ({ textContent: '' }) },
+    window: {
+      API: { get: async () => { throw { status: 401 }; } },
+      location: { replace: (value) => { destination = value; } },
+    },
+  });
+  vm.runInContext(readFileSync(path.join(scripts, 'pages/entry.js'), 'utf8'), context);
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(destination, '/login?next=/workspace');
 });
 
 let server;
@@ -165,13 +190,13 @@ for (const [username, role, destination] of [
     const page = loginPage(username, password, browserFetch());
     await page.submit();
     assert.equal(page.error.hidden, true, page.error.textContent);
-    assert.equal(page.destination(), '/');
+    assert.equal(page.destination(), '/workspace');
     const session = await page.context.window.API.get('/api/auth/me');
     assert.equal(session.account.username, username);
     assert.equal(session.account.role, role);
     vm.runInContext(readFileSync(path.join(scripts, 'pages/entry.js'), 'utf8'), page.context);
     const deadline = Date.now() + 5000;
-    while (page.destination() === '/' && page.error.hidden && Date.now() < deadline) {
+    while (page.destination() === '/workspace' && page.error.hidden && Date.now() < deadline) {
       await new Promise((resolve) => setTimeout(resolve, 10));
     }
     assert.equal(page.destination(), destination, page.error.textContent);

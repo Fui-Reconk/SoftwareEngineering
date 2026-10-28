@@ -112,15 +112,15 @@ def accounts():
 @auth.post("/admin/accounts")
 @protected(write=True)
 def create_account():
-    data = payload({"username", "password", "role"})
-    account = service().create_account(token(), data["username"], data["password"], data["role"])
+    data = payload({"username", "display_name", "password", "role"})
+    account = service().create_account(token(), data["username"], data["password"], data["role"], data["display_name"])
     return jsonify(data={"account": account}), 201
 
 
 @auth.patch("/admin/accounts/<user_id>")
 @protected(write=True)
 def update_account(user_id):
-    data = payload(set(), {"role", "is_active", "password"})
+    data = payload(set(), {"username", "display_name", "role", "is_active", "password"})
     result = service().update_account(token(), user_id, data)
     response = jsonify(data={"account": result})
     # The service revokes all of the target account's sessions, including this one.

@@ -83,7 +83,7 @@
     accountBox.textContent = '';
     const name = document.createElement('span');
     name.className = 'who-name';
-    name.textContent = account.username;
+    name.textContent = account.display_name || '姓名待设置';
     const meta = document.createElement('span');
     meta.className = 'who-meta';
     meta.textContent = { teacher: '教师', admin: '管理员', auditor: '审计员' }[account.role] || account.role;

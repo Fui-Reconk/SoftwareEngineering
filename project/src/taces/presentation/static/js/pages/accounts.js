@@ -20,6 +20,7 @@
   const form = byId('accountForm');
   const fields = byId('accountFields');
   const title = byId('accountFormTitle');
+  const displayName = byId('accountDisplayName');
   const username = byId('accountUsername');
   const role = byId('accountRole');
   const status = byId('accountStatus');
@@ -60,6 +61,7 @@
   function beginCreate() {
     selected = null;
     title.textContent = '新建账号';
+    displayName.value = '';
     username.value = '';
     username.readOnly = false;
     role.value = 'teacher';
@@ -85,8 +87,9 @@
     if (loading || saving) return;
     selected = account;
     title.textContent = '编辑账号';
+    displayName.value = account.display_name || '';
     username.value = account.username;
-    username.readOnly = true;
+    username.readOnly = false;
     role.value = account.role;
     status.value = String(account.is_active);
     statusField.hidden = false;
@@ -104,11 +107,13 @@
   function addRow(account) {
     const row = document.createElement('tr');
     const name = document.createElement('td');
+    const accountCell = document.createElement('td');
     const roleCell = document.createElement('td');
     const state = document.createElement('td');
     const actions = document.createElement('td');
     const edit = document.createElement('button');
-    name.textContent = account.username;
+    name.textContent = account.display_name || '姓名待设置';
+    accountCell.textContent = account.username;
     roleCell.textContent = roles[account.role] || account.role;
     state.textContent = account.is_active ? '启用' : '停用';
     state.className = account.is_active ? 'accounts-status active' : 'accounts-status';
@@ -118,7 +123,7 @@
     edit.setAttribute('aria-label', `编辑账号 ${account.username}`);
     edit.addEventListener('click', () => beginEdit(account));
     actions.appendChild(edit);
-    row.append(name, roleCell, state, actions);
+    row.append(name, accountCell, roleCell, state, actions);
     rows.appendChild(row);
     rowButtons.push(edit);
   }
@@ -176,6 +181,8 @@
     let selfDemoted = false;
     if (selected) {
       const changes = {};
+      if (username.value.trim() !== selected.username) changes.username = username.value.trim();
+      if (displayName.value.trim() !== (selected.display_name || '')) changes.display_name = displayName.value.trim();
       if (role.value !== selected.role) changes.role = role.value;
       if ((status.value === 'true') !== selected.is_active) changes.is_active = status.value === 'true';
       if (password.value !== '') changes.password = password.value;
@@ -189,7 +196,7 @@
       selfDemoted = editingSelf && changes.role !== undefined && changes.role !== 'admin';
       request = () => window.API.patch(`/api/admin/accounts/${encodeURIComponent(selected.user_id)}`, changes);
     } else {
-      const payload = { username: username.value.trim(), role: role.value, password: password.value };
+      const payload = { username: username.value.trim(), display_name: displayName.value.trim(), role: role.value, password: password.value };
       request = () => window.API.post('/api/admin/accounts', payload);
     }
     saving = true;

@@ -22,7 +22,7 @@
 | `GET /api/courses` | 已有 | `{courses: [{course_id, name, teacher_id, term}]}`，教师只看到本人的课 |
 | `GET /api/admin/courses` | 已有 | 管理员专用 `{courses: [{course_id, name, teacher_id, term, closes_at, dimensions: [{name, weight}]}]}`，不返回评价码 |
 
-`account` 为 `{user_id, username, role, is_active, created_at}`，`role` 取 `teacher` / `admin` / `auditor`。
+`account` 为 `{user_id, username, display_name, role, is_active, created_at}`；`username` 是职工号等登录账号，`display_name` 是姓名，旧账号未补齐时为空；`role` 取 `teacher` / `admin` / `auditor`。
 **审计员调不了 `GET /api/courses`**（`list_courses` 只放行 admin 与有 `courses:own` 的教师），页面不要对审计员发这个请求。
 
 ## 业务契约与实现状态
@@ -44,7 +44,7 @@
 
 ```json
 { "state": "published", "publicationId": "0123456789abcdef0123456789abcdef", "charged": true,
-  "courseCode": "SE201-03", "courseTitle": "数据结构", "term": "2025–2026 学年第二学期",
+  "courseCode": "SE201-03", "courseTitle": "数据结构", "term": "2025–2026 学年第二学期", "teacherName": "李砚秋",
   "responses": 235, "enrolled": 287, "publishedAt": "2026-06-30T10:13:00+08:00",
   "budgetExhausted": false,
   "pooledMean": 3.86, "interval": 3.48, "spread": 0.30, "distinguishable": false,
@@ -62,7 +62,7 @@
 - 扣费按发布。重复查看命中发布缓存，返回同一份 `publishedAt` 与数值，不再扣预算、不再加噪。
 - 已有快照时，预算不足以再次发布仍是 `state: "published"`（返回最后一次发布）；`budgetExhausted` 为 `true`，页面在页脚提示当前预算不足以再次发布。没有任何历史快照时可以返回未发布，见下文。
 
-后端补充：published含publicationId（已发布快照标识）及charged（本请求是否新发布）；enrolled是该快照发布时已发行的评价码数量，不是学生名册人数。精确参与数不受差分隐私保护；interval是噪声误差界，模型假设见BACKEND.md第14节。若历史账本已耗尽却从未保存发布，则200 unpublished/reason=budget_exhausted，仍带sample/threshold/shortfall/charged=false。门槛升高也不会撤回已有公开结果。
+后端补充：published含publicationId（已发布快照标识）及charged（本请求是否新发布）；新快照的teacherName为发布时姓名，迁移前快照可能没有该字段，未补齐姓名的新快照为空字符串。enrolled是该快照发布时已发行的评价码数量，不是学生名册人数。精确参与数不受差分隐私保护；interval是噪声误差界，模型假设见BACKEND.md第14节。若历史账本已耗尽却从未保存发布，则200 unpublished/reason=budget_exhausted，仍带sample/threshold/shortfall/charged=false。门槛升高也不会撤回已有公开结果。
 
 ### 2. 评价码校验（第 3 片）
 
@@ -114,11 +114,14 @@
 `GET /api/admin/audit?from=&to=&course=&limit=50&offset=0`，管理员与审计员都可读。
 
 ```json
-{ "entries": [{ "at": "2026-06-30T10:13:00+08:00", "actor": "李砚秋",
-                "action": "登录", "target": "—", "epsCost": 0 }],
+{ "entries": [{ "at": "2026-06-30T10:13:00+08:00", "actor": "001234",
+                "actorId": "0123456789abcdef0123456789abcdef", "action": "登录", "target": "系统",
+                "targetId": null, "accountChange": null, "epsCost": 0 }],
   "next": 50,
   "courses": [{ "course_id": "SE201-03", "name": "数据结构" }] }
 ```
+
+`actor` 是关联员工的当前登录账号，`actorId` 为不变的员工标识（系统或未知标识为 null）；账号操作另提供 `targetId`。修改登录账号时 `accountChange` 记录 `{from, to}`，以便区分号码重新分配前后的记录；早期记录未保存当时账号，不能追溯出当时的登录账号。
 
 - `actor`、`action` 已翻译成人与中文；`at` 是 `Asia/Shanghai` 的 ISO 时间。前端只填槽，不自建动作字典。
 - `courses` 由这个接口自己返回，因为审计员只有 `audit:read`，调不了 `/api/courses`。
@@ -128,7 +131,7 @@ from/to支持上海本地YYYY-MM-DD日期和带时区ISO时间（最多六位小
 
 ### 6. 快照导出（第6片）
 
-`GET /api/courses/<course_id>/export?format=csv|pdf&publication=<可选publicationId>`，仅课程所属教师。format默认csv，指定publicationId可取历史发布；省略则取最后一次发布。返回附件文件，不套JSON data。CSV为UTF-8 BOM；PDF支持中文。文件名为“课程名_学期_教师账号”，课程名与学期取自发布快照，教师账号为当前任课教师。发布编号写在文件内容中；导出不触发发布、不扣预算，保留与看板相同的快照编号、时间和数值。
+`GET /api/courses/<course_id>/export?format=csv|pdf&publication=<可选publicationId>`，仅课程所属教师。format默认csv，指定publicationId可取历史发布；省略则取最后一次发布。返回附件文件，不套JSON data。CSV为UTF-8 BOM；PDF支持中文。文件名为“课程名_学期_教师姓名”，课程名、学期和姓名取自发布快照。旧快照或姓名未设置的发布缺少姓名时使用当前任课教师姓名，并在文件中注明；当前姓名也未设置则显示“教师姓名待设置”。发布编号写在文件内容中；导出不触发发布、不扣预算，保留与看板相同的快照编号、时间和数值。
 无发布409 NOT_PUBLISHED，指定快照不存在或不属于该课404 PUBLICATION_NOT_FOUND，非法/重复/未知查询参数400。看板按当前显示的 `publicationId` 导出，避免页面过期时误取较新的快照；也可输入已知的历史编号导出。教师侧栏的独立导出页只读取课程列表并调用导出接口，可直接下载最近一次或指定编号的已发布快照。Mock 模式不支持文件导出。
 
 ## 差异登记

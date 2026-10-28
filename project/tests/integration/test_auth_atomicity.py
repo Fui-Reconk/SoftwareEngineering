@@ -21,7 +21,7 @@ def staff(app, database):
     service = app.extensions["taces_auth"]
     administrator = service.bootstrap_admin("admin", PASSWORD)
     admin_token, _ = service.login("admin", PASSWORD)
-    teacher = service.create_account(admin_token, "teacher", PASSWORD, "teacher")
+    teacher = service.create_account(admin_token, "teacher", PASSWORD, "teacher", "教师")
     teacher_token, _ = service.login("teacher", PASSWORD)
     return service, administrator, admin_token, teacher, teacher_token
 
@@ -41,7 +41,7 @@ def audit_snapshot(database):
 
 def test_concurrent_administrators_cannot_disable_each_other_and_leave_no_admin(staff, database):
     service, first, first_token, _, _ = staff
-    second = service.create_account(first_token, "admin_two", PASSWORD, "admin")
+    second = service.create_account(first_token, "admin_two", PASSWORD, "admin", "管理员二")
     second_token, _ = service.login("admin_two", PASSWORD)
     gate = Barrier(2)
 
@@ -78,7 +78,7 @@ def test_concurrent_administrators_cannot_disable_each_other_and_leave_no_admin(
 @pytest.mark.parametrize("change, expected_status", [({"role": "teacher"}, 403), ({"is_active": 0}, 401)])
 def test_authority_is_rechecked_after_http_precheck(staff, app, database, monkeypatch, change, expected_status):
     service, administrator, admin_token, teacher, _ = staff
-    service.create_account(admin_token, "backup_admin", PASSWORD, "admin")
+    service.create_account(admin_token, "backup_admin", PASSWORD, "admin", "备用管理员")
     before = identity_snapshot(database)
     original = service.update_account
     reached = []
@@ -131,13 +131,13 @@ def test_audit_failure_rolls_back_account_and_session_changes(staff, database, m
     before = identity_snapshot(database)
     audits_before = audit_snapshot(database)
 
-    def failing_audit(connection, actor, action):
+    def failing_audit(connection, actor, action, *, detail=None):
         raise sqlite3.OperationalError("injected audit write failure")
 
     monkeypatch.setattr(auth_module, "audit", failing_audit)
     with pytest.raises(sqlite3.OperationalError, match="injected audit write failure"):
         if operation == "create":
-            service.create_account(admin_token, "new_teacher", NEW_PASSWORD, "teacher")
+            service.create_account(admin_token, "new_teacher", NEW_PASSWORD, "teacher", "新教师")
         elif operation == "update":
             service.update_account(admin_token, teacher["user_id"], {
                 "role": "auditor", "is_active": False, "password": NEW_PASSWORD,
@@ -165,7 +165,7 @@ def test_service_forbidden_requests_commit_denial_audit_without_changing_identit
         if operation == "list":
             service.list_accounts(teacher_token)
         elif operation == "create":
-            service.create_account(teacher_token, "new_admin", PASSWORD, "admin")
+            service.create_account(teacher_token, "new_admin", PASSWORD, "admin", "新管理员")
         else:
             service.update_account(teacher_token, administrator["user_id"], {"is_active": False})
     assert (caught.value.status, caught.value.code) == (403, "FORBIDDEN")

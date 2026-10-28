@@ -8,7 +8,7 @@ import pytest
 PASSWORD = "Initial-password-2026!"
 NEW_PASSWORD = "Changed-password-2026!"
 LOGIN_HEADERS = {"X-TACES-Request": "1"}
-SAFE_ACCOUNT_KEYS = {"user_id", "username", "role", "is_active", "created_at"}
+SAFE_ACCOUNT_KEYS = {"user_id", "username", "display_name", "role", "is_active", "created_at"}
 
 
 def login(client, username="admin", password=PASSWORD, **kwargs):
@@ -45,7 +45,7 @@ def create_account(admin_client, username="teacher", role="teacher"):
     client, headers = admin_client
     response = client.post(
         "/api/admin/accounts", headers=headers,
-        json={"username": username, "password": PASSWORD, "role": role},
+        json={"username": username, "display_name": username, "password": PASSWORD, "role": role},
     )
     assert response.status_code == 201, response.get_json()
     account = response.get_json()["data"]["account"]
@@ -174,7 +174,7 @@ def test_non_admin_roles_cannot_manage_accounts(app, admin_client, role):
     assert client.get("/api/admin/accounts").status_code == 403
     assert client.post(
         "/api/admin/accounts", headers=csrf,
-        json={"username": "newuser", "password": PASSWORD, "role": "teacher"},
+        json={"username": "newuser", "display_name": "新教师", "password": PASSWORD, "role": "teacher"},
     ).status_code == 403
     assert client.patch(
         f"/api/admin/accounts/{account['user_id']}", headers=csrf, json={"role": "admin"},
@@ -197,7 +197,7 @@ def test_duplicate_username_is_conflict_without_overwriting_account(admin_client
     client, headers = admin_client
     response = client.post(
         "/api/admin/accounts", headers=headers,
-        json={"username": "teacher", "password": NEW_PASSWORD, "role": "admin"},
+        json={"username": "teacher", "display_name": "teacher", "password": NEW_PASSWORD, "role": "admin"},
     )
     assert response.status_code == 409
     accounts = client.get("/api/admin/accounts").get_json()["data"]["accounts"]
@@ -349,7 +349,7 @@ def test_login_rejects_invalid_json_shapes_and_extra_fields(app, admin, body):
 ])
 def test_account_creation_validates_types_roles_and_extra_fields(admin_client, overrides):
     client, headers = admin_client
-    body = {"username": "teacher", "password": PASSWORD, "role": "teacher", **overrides}
+    body = {"username": "teacher", "display_name": "teacher", "password": PASSWORD, "role": "teacher", **overrides}
     response = client.post("/api/admin/accounts", headers=headers, json=body)
     assert response.status_code == 400
     assert len(client.get("/api/admin/accounts").get_json()["data"]["accounts"]) == 1
@@ -357,7 +357,7 @@ def test_account_creation_validates_types_roles_and_extra_fields(admin_client, o
 
 @pytest.mark.parametrize("body", [
     {}, {"is_active": "false"}, {"is_active": 0}, {"role": "student"},
-    {"role": None}, {"password": "short"}, {"username": "renamed"}, {"user_id": "forged"},
+    {"role": None}, {"password": "short"}, {"username": "!"}, {"user_id": "forged"},
 ])
 def test_account_updates_validate_types_roles_and_extra_fields(admin_client, body):
     teacher = create_account(admin_client)
@@ -432,7 +432,7 @@ def test_surrogate_passwords_are_rejected_without_changing_account_or_session_st
         body = {"username": "admin", "password": malformed}
     elif operation == "create":
         method, path, headers = "post", "/api/admin/accounts", csrf_headers
-        body = {"username": "surrogate_user", "password": malformed, "role": "teacher"}
+        body = {"username": "surrogate_user", "display_name": "教师", "password": malformed, "role": "teacher"}
     elif operation == "update":
         method, path, headers = "patch", f"/api/admin/accounts/{admin['user_id']}", csrf_headers
         body = {"password": malformed}

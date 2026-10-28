@@ -22,13 +22,13 @@ python scripts/generate_test_data.py --output tests/experiments/output/small --p
 
 ## 演示账号和评价码
 
-| 用途 | 用户名 | 密码 |
-| --- | --- | --- |
-| 管理员 | `demo_admin` | `Taces-demo-2026!` |
-| 教师 | `demo_teacher` | 同上 |
-| 另一位教师 | `demo_other` | 同上 |
-| 审计员 | `demo_auditor` | 同上 |
-| 停用账号，登录预期失败 | `demo_disabled` | 同上 |
+| 用途 | 姓名 | 登录账号 | 密码 |
+| --- | --- | --- | --- |
+| 管理员 | 演示管理员 | `demo_admin` | `Taces-demo-2026!` |
+| 教师 | 张老师 | `demo_teacher` | 同上 |
+| 另一位教师 | 李老师 | `demo_other` | 同上 |
+| 审计员 | 演示审计员 | `demo_auditor` | 同上 |
+| 停用账号，登录预期失败 | 停用教师 | `demo_disabled` | 同上 |
 
 登录输入上表明文密码。页面默认连接真实后端，旧Mock口令 `taces2026` 不适用于真实账号。`demo_disabled` 为故意停用的反例，不能登录。
 

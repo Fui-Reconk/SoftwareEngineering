@@ -97,11 +97,11 @@ def test_auditor_gets_courses_translated_names_local_dates_and_pagination(staff)
     assert first.status_code == 200
     data = first.json["data"]
     assert data["courses"] == [{"course_id": "c1", "name": "数据结构"}, {"course_id": "c2", "name": "另一门课"}]
-    assert data["entries"] == [{"at": "2001-01-02T23:59:59+08:00", "actor": "teacher", "action": "读取统计", "target": "数据结构", "epsCost": 0.0}]
+    assert data["entries"] == [{"at": "2001-01-02T23:59:59+08:00", "actor": "teacher", "actorId": staff["teacher"]["user_id"], "action": "读取统计", "target": "数据结构", "targetId": None, "accountChange": None, "epsCost": 0.0}]
     assert data["next"] == 1
     last = client.get(query + "&offset=1").json["data"]
     assert last["next"] is None
-    assert last["entries"] == [{"at": "2001-01-02T00:00:00+08:00", "actor": "teacher", "action": "发布统计", "target": "数据结构", "epsCost": .1}]
+    assert last["entries"] == [{"at": "2001-01-02T00:00:00+08:00", "actor": "teacher", "actorId": staff["teacher"]["user_id"], "action": "发布统计", "target": "数据结构", "targetId": None, "accountChange": None, "epsCost": .1}]
     with staff["db"].read_current() as con:
         assert con.execute("SELECT count(*) FROM main.audit_log").fetchone()[0] == count
 

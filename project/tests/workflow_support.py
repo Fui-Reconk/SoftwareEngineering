@@ -13,7 +13,7 @@ def staff(app, database):
     auth = app.extensions["taces_auth"]
     admin = auth.bootstrap_admin("admin", PASSWORD)
     token, _ = auth.login("admin", PASSWORD)
-    teacher = auth.create_account(token, "teacher", PASSWORD, "teacher")
+    teacher = auth.create_account(token, "teacher", PASSWORD, "teacher", "teacher")
     client = app.test_client()
     client.set_cookie("taces_session", token, path="/api")
     csrf = auth.current(token)["csrf_token"]
@@ -42,7 +42,7 @@ def issue_codes(staff, course_id="c1", count=1):
 
 def login_role(staff, username="teacher", role="teacher"):
     if username != "teacher":
-        staff["auth"].create_account(staff["token"], username, PASSWORD, role)
+        staff["auth"].create_account(staff["token"], username, PASSWORD, role, username)
     token, result = staff["auth"].login(username, PASSWORD)
     client = staff["app"].test_client()
     client.set_cookie("taces_session", token, path="/api")

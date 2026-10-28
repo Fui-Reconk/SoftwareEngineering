@@ -173,8 +173,9 @@
   function teacherLabel(teacherId) {
     const account = accounts.find((item) => item.user_id === teacherId);
     if (!account) return `${teacherId}（账号不可用）`;
-    if (account.role !== 'teacher') return `${account.username}（非教师账号）`;
-    return account.is_active ? account.username : `${account.username}（已停用）`;
+    const label = `${account.display_name || '姓名待设置'}（${account.username}）`;
+    if (account.role !== 'teacher') return `${label}（非教师账号）`;
+    return account.is_active ? label : `${label}（已停用）`;
   }
 
   function addRow(course) {
@@ -291,7 +292,7 @@
     teachers.forEach((account) => {
       const option = document.createElement('option');
       option.value = account.user_id;
-      option.textContent = account.username;
+      option.textContent = teacherLabel(account.user_id);
       teacher.appendChild(option);
     });
     const assignedIsActive = selected && teachers.some((account) => account.user_id === selected.teacher_id);

@@ -17,7 +17,7 @@ def code_digest(code):
 
 def lookup(connection, digest):
     return connection.execute(
-        "SELECT e.course_id,e.used_flag,s.expires_at,w.closes_at,c.name,a.username "
+        "SELECT e.course_id,e.used_flag,s.expires_at,w.closes_at,c.name,a.display_name "
         "FROM identity.enroll_code e JOIN main.course c ON c.course_id=e.course_id "
         "LEFT JOIN identity.code_state s ON s.code_hash=e.code_hash "
         "LEFT JOIN main.course_state w ON w.course_id=e.course_id "
@@ -52,7 +52,7 @@ class SubmissionService:
                 "SELECT name FROM main.dimension WHERE course_id=? ORDER BY rowid", (row["course_id"],)
             ).fetchall()
             return {"valid": True, "course": {"code": row["course_id"], "title": row["name"],
-                    "teacher": row["username"] or "授课教师", "dimensions": [{"name": item[0]} for item in dimensions]}}
+                    "teacher": row["display_name"] or "教师姓名待设置", "dimensions": [{"name": item[0]} for item in dimensions]}}
 
     def submit(self, body):
         fields(body, {"code", "ratings"}, {"openText"})

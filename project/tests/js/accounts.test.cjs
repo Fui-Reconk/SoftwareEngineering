@@ -26,8 +26,8 @@ function node() {
 async function render({ role = 'admin', accounts, patchFailure = null, getFailures = [], postWait = null } = {}) {
   assert.ok(existsSync(scriptPath), 'account management page script is missing');
   let data = (accounts || [
-    { user_id: 'self', username: 'admin', role: 'admin', is_active: true },
-    { user_id: 'teacher-1', username: 'teacher', role: 'teacher', is_active: true },
+    { user_id: 'self', username: 'admin', display_name: '管理员', role: 'admin', is_active: true },
+    { user_id: 'teacher-1', username: 'teacher', display_name: '张老师', role: 'teacher', is_active: true },
   ]).map(account => ({ ...account }));
   const elements = new Map();
   const requests = [];
@@ -51,7 +51,7 @@ async function render({ role = 'admin', accounts, patchFailure = null, getFailur
     async post(route, body) {
       requests.push({ method: 'POST', route, body: JSON.parse(JSON.stringify(body)) });
       if (postWait) await postWait;
-      const account = { user_id: 'created', username: body.username, role: body.role, is_active: true };
+      const account = { user_id: 'created', username: body.username, display_name: body.display_name, role: body.role, is_active: true };
       data.push(account);
       return { account };
     },
@@ -60,6 +60,8 @@ async function render({ role = 'admin', accounts, patchFailure = null, getFailur
       if (patchFailure) throw patchFailure;
       const id = decodeURIComponent(route.split('/').pop());
       const account = data.find(item => item.user_id === id);
+      if ('username' in body) account.username = body.username;
+      if ('display_name' in body) account.display_name = body.display_name;
       if ('role' in body) account.role = body.role;
       if ('is_active' in body) account.is_active = body.is_active;
       return { account: { ...account } };
@@ -80,25 +82,41 @@ async function render({ role = 'admin', accounts, patchFailure = null, getFailur
 }
 
 function editButton(view, index) {
-  return view.elements.get('accountRows').children[index].children[3].children[0];
+  return view.elements.get('accountRows').children[index].children[4].children[0];
 }
 
 test('admin can create an account with the fields required by the real API', async () => {
   const view = await render();
   await view.click('accountCreate');
   view.elements.get('accountUsername').value = 'new_teacher';
+  view.elements.get('accountDisplayName').value = '李老师';
   view.elements.get('accountRole').value = 'teacher';
   view.elements.get('accountPassword').value = 'Long-password-2026!';
   await view.submit();
   assert.deepEqual(view.requests.find(request => request.method === 'POST'), {
     method: 'POST', route: '/api/admin/accounts', body: {
-      username: 'new_teacher', role: 'teacher', password: 'Long-password-2026!',
+      username: 'new_teacher', display_name: '李老师', role: 'teacher', password: 'Long-password-2026!',
     },
   });
   assert.equal(view.elements.get('accountPassword').value, '');
   assert.equal(view.elements.get('accountRows').children.length, 3);
   assert.equal(view.elements.get('accountSaved').hidden, false);
   assert.equal(view.elements.get('accountDialog').open, false);
+});
+
+test('account rows and edit form distinguish name from staff number', async () => {
+  const view = await render();
+  const row = view.elements.get('accountRows').children[1];
+  assert.equal(row.children[0].textContent, '张老师');
+  assert.equal(row.children[1].textContent, 'teacher');
+  editButton(view, 1).events.click();
+  assert.equal(view.elements.get('accountDisplayName').value, '张老师');
+  assert.equal(view.elements.get('accountUsername').readOnly, false);
+  view.elements.get('accountDisplayName').value = '张小明';
+  view.elements.get('accountUsername').value = '002222';
+  await view.submit();
+  assert.deepEqual(view.requests.find(request => request.method === 'PATCH').body,
+    { username: '002222', display_name: '张小明' });
 });
 
 test('editing another account sends only changed role, status and password', async () => {

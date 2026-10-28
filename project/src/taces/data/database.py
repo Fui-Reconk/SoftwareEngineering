@@ -11,7 +11,7 @@ import sqlite3
 from typing import Iterator
 
 
-SCHEMA_VERSION = 3
+SCHEMA_VERSION = 4
 CORE_TABLES = {
     "main": {"course", "dimension", "budget_ledger", "audit_log"},
     "identity": {"student", "enroll_code"},
@@ -110,7 +110,7 @@ class Database:
         if len(set(versions.values())) != 1:
             raise StorageError("Database schema versions are incompatible across files")
         version = versions["main"]
-        if version not in (0, 1, 2, SCHEMA_VERSION):
+        if version not in (0, 1, 2, 3, SCHEMA_VERSION):
             raise StorageError("Database schema version is incompatible")
         expected_tables = CORE_TABLES if version == 1 else (VERSION_TWO_TABLES if version == 2 else TABLES)
         for schema, expected in expected_tables.items():
@@ -131,6 +131,9 @@ class Database:
     def _validate_schema(cls, connection: sqlite3.Connection) -> None:
         if cls._schema_version(connection) != SCHEMA_VERSION:
             raise StorageError("Database schema requires an upgrade; run upgrade-db first")
+        columns = {row[1] for row in connection.execute("PRAGMA identity.table_info(account)")}
+        if "display_name" not in columns:
+            raise StorageError("Database account names are missing; schema is incompatible")
 
     @staticmethod
     def _execute_schema(connection: sqlite3.Connection, filenames: tuple[str, ...]) -> None:
@@ -154,24 +157,26 @@ class Database:
             # Keep schema validation and DDL under the same write lock.
             connection.execute("BEGIN IMMEDIATE")
             version = self._schema_version(connection, allow_empty=True)
-            if version in (1, 2):
+            if version in (1, 2, 3):
                 raise StorageError("Database schema requires an upgrade; run upgrade-db first")
             if version == 0:
                 self._execute_schema(
-                    connection, ("metadata.sql", "identity.sql", "evaluation.sql", "auth.sql", "workflow.sql")
+                    connection, ("metadata.sql", "identity.sql", "evaluation.sql", "auth.sql", "workflow.sql", "account_names.sql")
                 )
             self._validate_schema(connection)
             connection.commit()
 
     def upgrade(self) -> None:
-        """Migrate a complete version-one database, preserving all existing rows."""
+        """Migrate a complete older database, preserving all existing rows."""
         with self._connect() as connection:
             connection.execute("BEGIN IMMEDIATE")
             version = self._schema_version(connection)
             if version == 1:
-                self._execute_schema(connection, ("auth.sql", "workflow.sql"))
+                self._execute_schema(connection, ("auth.sql", "workflow.sql", "account_names.sql"))
             elif version == 2:
-                self._execute_schema(connection, ("workflow.sql",))
+                self._execute_schema(connection, ("workflow.sql", "account_names.sql"))
+            elif version == 3:
+                self._execute_schema(connection, ("account_names.sql",))
             self._validate_schema(connection)
             connection.commit()
 

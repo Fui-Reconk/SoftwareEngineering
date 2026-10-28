@@ -77,7 +77,7 @@ def test_code_batch_invalid_count_is_atomic(staff, count):
 
 def test_course_can_transfer_owner_and_close_window(staff):
     create_course(staff)
-    other = staff["auth"].create_account(staff["token"], "other", "Other-password-2026!", "teacher")
+    other = staff["auth"].create_account(staff["token"], "other", "Other-password-2026!", "teacher", "other")
     result = staff["client"].patch("/api/admin/courses/c1", headers=staff["headers"], json={"teacher_id": other["user_id"], "closes_at": 0})
     assert result.status_code == 200
     teacher, _ = login_role(staff)
@@ -87,7 +87,7 @@ def test_course_can_transfer_owner_and_close_window(staff):
 
 def test_reassigned_course_moves_between_teacher_workspaces(staff):
     course = create_course(staff)
-    other = staff["auth"].create_account(staff["token"], "second_teacher", "Other-password-2026!", "teacher")
+    other = staff["auth"].create_account(staff["token"], "second_teacher", "Other-password-2026!", "teacher", "second_teacher")
     other_token, _ = staff["auth"].login("second_teacher", "Other-password-2026!")
     previous, _ = login_role(staff)
     current = staff["app"].test_client()

@@ -19,12 +19,15 @@ from taces.business.errors import ServiceError
 
 PDF_LOCK = RLock()
 LABELS = {"publicationId": "发布编号", "courseCode": "课程编号", "courseTitle": "课程名称", "term": "学期",
+          "teacherName": "教师姓名",
           "publishedAt": "发布时间", "responses": "参与份数（公开）", "enrolled": "发行码数（公开）",
           "pooledMean": "加权均分", "interval": "同时噪声误差界", "spread": "维度差距", "distinguishable": "是否可区分"}
 
 
 def snapshot_rows(data):
     rows = [(key, data[key]) for key in LABELS]
+    if data.get("teacherNameNote"):
+        rows.append(("teacherNameNote", data["teacherNameNote"]))
     rows.extend(("dimension:" + row["name"], row["value"]) for row in data["dimensions"])
     rows.extend(("score:" + str(row["score"]), row["count"]) for row in data["distribution"])
     rows.append(("openText.responses", data["openText"]["responses"]))
@@ -88,6 +91,8 @@ def render_pdf(data):
                     label = "评分档：" + key.removeprefix("score:")
                 elif key.startswith("term:"):
                     label = "词频：" + key.removeprefix("term:")
+                elif key == "teacherNameNote":
+                    label = "教师姓名说明"
                 else:
                     label = "开放题噪声份数"
             rows.append([Paragraph(escape(label), body), Paragraph(escape(str(value)), body)])
@@ -156,6 +161,9 @@ class ExportService:
                     raise ServiceError(404, "PUBLICATION_NOT_FOUND", "发布快照不存在。")
                 raise ServiceError(409, "NOT_PUBLISHED", "课程尚未发布统计。")
             data = json.loads(saved["payload"])
+            if not data.get("teacherName"):
+                data["teacherName"] = actor["display_name"] or "教师姓名待设置"
+                data["teacherNameNote"] = "发布时未记录教师姓名，此处为当前任课教师姓名。"
             content = render_csv(data) if format == "csv" else render_pdf(data)
             write_audit(con, actor["user_id"], "export." + format, course_id=course_id)
-            return content, export_filename(data, actor["username"], format)
+            return content, export_filename(data, data["teacherName"], format)

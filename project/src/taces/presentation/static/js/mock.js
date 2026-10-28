@@ -6,6 +6,7 @@
   const TEACHER = {
     user_id: 'a-liyanqiu',
     username: 'liyanqiu',
+    display_name: '李砚秋',
     role: 'teacher',
     is_active: true,
     created_at: 1766500000,
@@ -23,6 +24,7 @@
     state: 'published',
     courseCode: 'SE201-03',
     courseTitle: '数据结构',
+    teacherName: '李砚秋',
     term: TERM,
     responses: 235,
     enrolled: 287,
@@ -91,7 +93,7 @@
         __error: {
           status: 401,
           code: 'INVALID_CREDENTIALS',
-          message: '用户名或密码不对。',
+          message: '账号或密码不对。',
         },
       };
     },

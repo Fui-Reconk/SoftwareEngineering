@@ -52,7 +52,7 @@ async function render(role, { pathname = '/admin/config', courses = [], failure 
           requests.push(route);
           if (route === '/api/auth/me') {
             if (unauthorized) throw { status: 401 };
-            return { account: { username: 'test_' + role, role }, csrf_token: 'test-csrf' };
+            return { account: { username: 'test_' + role, display_name: '测试姓名', role }, csrf_token: 'test-csrf' };
           }
           if (route === '/api/courses') {
             if (failure) throw { status: 503 };
@@ -133,7 +133,7 @@ test('teacher without courses sees an explicit empty state', async () => {
 test('course loading failure leaves account and logout available', async () => {
   const view = await render('teacher', { failure: true });
   assert.match(view.elements.get('courseList').textContent, /取不到/);
-  assert.equal(view.elements.get('accountBox').children[0].textContent, 'test_teacher');
+  assert.equal(view.elements.get('accountBox').children[0].textContent, '测试姓名');
   await view.elements.get('signOut').events.click();
   assert.equal(view.redirect(), '/login');
 });

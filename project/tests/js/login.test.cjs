@@ -123,7 +123,7 @@ with TemporaryDirectory(prefix='taces-page-login-') as directory:
                                    ('demo_other','teacher','demo-other'),
                                    ('demo_auditor','auditor',None),
                                    ('demo_disabled','teacher',None)]:
-        account = auth.create_account(token, username, password, role)
+        account = auth.create_account(token, username, password, role, username)
         if course:
             CourseService(db, auth).create(token, {'course_id':course,'name':course,
                 'teacher_id':account['user_id'],'term':'synthetic'})
@@ -220,6 +220,6 @@ for (const [name, username, secret] of [
     assert.equal(page.destination(), undefined);
     assert.equal(page.error.hidden, false);
     assert.equal(page.button.disabled, false);
-    assert.equal(page.error.textContent, '用户名或密码不正确。');
+    assert.equal(page.error.textContent, '账号或密码不正确。');
   });
 }

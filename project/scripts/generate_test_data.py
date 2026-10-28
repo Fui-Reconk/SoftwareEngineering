@@ -212,14 +212,14 @@ def generate_dataset(output, *, seed=SEED, performance_rows=10000):
     db.initialize()
     app = create_app({"TESTING": True, "DATA_DIR": output / "db"})
     auth = app.extensions["taces_auth"]
-    admin = auth.bootstrap_admin("demo_admin", PASSWORD)
+    admin = auth.bootstrap_admin("demo_admin", PASSWORD, "演示管理员")
     admin_token, _ = auth.login(admin["username"], PASSWORD)
     accounts = {"admin": admin}
-    for role, username, actual_role in (("teacher", "demo_teacher", "teacher"),
-                                         ("other_teacher", "demo_other", "teacher"),
-                                         ("auditor", "demo_auditor", "auditor"),
-                                         ("disabled", "demo_disabled", "teacher")):
-        accounts[role] = auth.create_account(admin_token, username, PASSWORD, actual_role)
+    for role, username, actual_role, display_name in (("teacher", "demo_teacher", "teacher", "张老师"),
+                                         ("other_teacher", "demo_other", "teacher", "李老师"),
+                                         ("auditor", "demo_auditor", "auditor", "演示审计员"),
+                                         ("disabled", "demo_disabled", "teacher", "停用教师")):
+        accounts[role] = auth.create_account(admin_token, username, PASSWORD, actual_role, display_name)
     auth.update_account(admin_token, accounts["disabled"]["user_id"], {"is_active": False})
     courses = CourseService(db, auth)
     submissions = SubmissionService(db)
@@ -258,7 +258,7 @@ def generate_dataset(output, *, seed=SEED, performance_rows=10000):
     manifest = {"format_version": 1, "synthetic": True, "seed": seed,
                 "generated_at": datetime.now(timezone.utc).isoformat(), "valid_until": deadline,
                 "database_dir": "db", "policy": {"epsilon": .1, "k": 5, "epsilonTotal": 4},
-                "accounts": {role: {"username": account["username"], "password": PASSWORD,
+                "accounts": {role: {"username": account["username"], "display_name": account["display_name"], "password": PASSWORD,
                                     "role": account["role"], "active": role != "disabled"}
                              for role, account in accounts.items()}, "courses": [], "codes": {}}
     truth, spare_codes = {}, {}

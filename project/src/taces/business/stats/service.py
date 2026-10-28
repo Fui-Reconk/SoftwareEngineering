@@ -85,6 +85,7 @@ class StatisticsService:
             published_at = utc_stamp()
             data = {"state": "published", "publicationId": uuid4().hex,
                     "courseCode": course_id, "courseTitle": course["name"], "term": course["term"],
+                    "teacherName": actor["display_name"],
                     "responses": n,
                     "enrolled": con.execute("SELECT count(*) FROM identity.enroll_code WHERE course_id=?", (course_id,)).fetchone()[0],
                     "publishedAt": shanghai_stamp(published_at),

@@ -30,11 +30,12 @@ def register_cli(app: Flask) -> None:
 
     @app.cli.command("create-admin")
     @click.option("--username", prompt="Username", required=True)
-    def create_admin_command(username: str) -> None:
+    @click.option("--display-name", default=None, help="管理员姓名；可在账号管理中补充。")
+    def create_admin_command(username: str, display_name: str | None) -> None:
         """Create the first administrator; subsequent accounts require an admin."""
         password = click.prompt("Password", hide_input=True, confirmation_prompt=True)
         try:
-            account = app.extensions["taces_auth"].bootstrap_admin(username, password)
+            account = app.extensions["taces_auth"].bootstrap_admin(username, password, display_name)
         except (ServiceError, StorageError, sqlite3.Error, OSError) as error:
             raise click.ClickException(f"管理员创建失败：{error}") from error
         click.echo(f"管理员已创建：{account['username']}（{account['user_id']}）。")

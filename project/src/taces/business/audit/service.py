@@ -1,6 +1,7 @@
 """Role-controlled audit projection; no evaluation text or staff secrets."""
 
 from datetime import datetime, time, timedelta, timezone
+import json
 import re
 
 from taces.business.auth.policy import require_permission
@@ -93,9 +94,23 @@ class AuditService:
             entries = []
             for row in rows[:limit]:
                 action, _, target = row["action"].partition(":")
+                account_target = target if action in {"account.create", "account.update", "account.password"} else ""
+                account_change = None
+                if action == "account.update" and row["stat_type"]:
+                    try:
+                        candidate = json.loads(row["stat_type"])
+                        if (isinstance(candidate, dict) and set(candidate) == {"from", "to"}
+                                and all(isinstance(value, str) and re.fullmatch(r"[a-z0-9_.-]{3,64}", value)
+                                        for value in candidate.values())):
+                            account_change = candidate
+                    except (TypeError, ValueError):
+                        pass
                 entries.append({"at": shanghai_stamp(row["ts"]),
                     "actor": row["username"] or ("系统" if row["actor"] == "system:bootstrap" else "历史账号"),
+                    "actorId": row["actor"] if re.fullmatch(r"[a-f0-9]{32}", row["actor"]) else None,
                     "action": ACTIONS.get(action, "历史操作"), "target": row["name"] or accounts.get(target, "系统"),
+                    "targetId": account_target if re.fullmatch(r"[a-f0-9]{32}", account_target) else None,
+                    "accountChange": account_change,
                     "epsCost": row["eps_cost_micros"] / 1_000_000})
             courses = [dict(row) for row in con.execute("SELECT course_id,name FROM main.course ORDER BY course_id")]
             return {"entries": entries, "next": offset + limit if len(rows) > limit else None, "courses": courses}

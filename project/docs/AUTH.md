@@ -12,24 +12,24 @@
 python -m flask --app run.py init-db
 ```
 
-已有 v1/v2 数据库先停止服务并备份三个库文件，再显式执行：
+已有 v1/v2/v3 数据库先停止服务并备份三个库文件，再显式执行：
 
 ```bash
 python -m flask --app run.py upgrade-db
 ```
 
-当前三库结构版本为 v3，共15张表。v1升级会补齐三个账号表与四个工作流表；v2升级补齐工作流表，保留已有数据。旧评价窗口与旧码在迁移时默认关闭，须由管理员重新配置窗口并发行新码。DDL 和版本更新同事务提交，失败整体回滚。
+当前三库结构版本为 v4，共15张表。v1升级会补齐三个账号表与四个工作流表；v2升级补齐工作流表，v3升级给账号表增加姓名字段，保留已有账号、密码和数据。旧姓名留空，由管理员补齐；不会将职工号当作姓名。旧评价窗口与旧码在迁移时默认关闭，须由管理员重新配置窗口并发行新码。DDL 和版本更新同事务提交，失败整体回滚。
 `init-db` 遇到旧版本会拒绝；重复初始化当前版本、重复升级当前版本均保留数据。
 混合版本、未知版本或缺失核心表需要先排查，不能靠删库重建处理。
 
 首次管理员通过终端创建：
 
 ```bash
-python -m flask --app run.py create-admin --username admin
+python -m flask --app run.py create-admin --username admin --display-name 管理员
 ```
 
-随后隐藏输入密码并确认。密码为 12–128 个字符；用户名为 3–64 位英文字母、数字、
-点、下划线或短横线，存储时转小写，因此大小写不区分。空库初始化不会创建默认账号或密码；合成演示账号由 [数据生成器](../scripts/README.md) 显式创建。
+随后隐藏输入密码并确认。密码为 12–128 个字符；登录账号（通常为职工号）为 3–64 位英文字母、数字、
+点、下划线或短横线，存储时转小写，因此大小写不区分。姓名为 1–64 个有效字符，独立于登录账号；创建首位管理员时可通过 `--display-name` 设置，不填则需之后在账号管理中补齐。空库初始化不会创建默认账号或密码；合成演示账号由 [数据生成器](../scripts/README.md) 显式创建。
 此命令仅允许账号表为空时执行；其他账号由已登录的管理员创建。
 Werkzeug 的直接依赖已列入 `pyproject.toml` 与 `requirements.txt`；安装工具按声明解析版本。
 
@@ -46,7 +46,7 @@ Werkzeug 的直接依赖已列入 `pyproject.toml` 与 `requirements.txt`；安�
 已有课程的旧 `teacher_id` 不会自动猜测映射到新账号，需由管理员在课程管理页面或通过 API 显式分配。
 管理员对课程元信息的访问不赋予统计查询权，统计与导出服务分别校验对应权限；统计服务校验 `statistics:own` 和课程归属。
 
-教师和审计员可在账号区进入“修改密码”，提供当前密码后设置新密码；无课程教师也可从工作区进入。管理员侧栏不显示此入口，后端本人改密接口仍适用于管理员。账号禁用、角色修改、管理员重置密码、本人修改密码会撤销该账号全部会话。
+教师和审计员可在账号区进入“修改密码”，提供当前密码后设置新密码；无课程教师也可从工作区进入。管理员侧栏不显示此入口，后端本人改密接口仍适用于管理员。管理员修改姓名或登录账号、账号禁用、角色修改、管理员重置密码、本人修改密码会撤销该账号全部会话。
 修改当前账号后需重新登录。系统始终保留至少一个启用的管理员，冲突返回 `409 / LAST_ADMIN`。
 账号管理写入与操作者的权限复核在同一个写事务中完成。
 
@@ -61,14 +61,14 @@ JSON 接口拒绝未知字段和错误类型；账号响应不含密码散列或
 | `GET /api/auth/me` | 会话 Cookie | `account`, `csrf_token`, `expires_at` |
 | `POST /api/auth/logout` | 会话 Cookie + CSRF 头 | `logged_out: true`；撤销当前会话 |
 | `POST /api/auth/password` | JSON：`current_password`, `new_password`；Cookie + CSRF 头 | `login_required: true`；撤销本人全部会话 |
-| `GET /api/admin/accounts` | 管理员 Cookie；可选 `limit`（1–100，默认 100）、`offset`（非负整数，至多 9 位） | `accounts` 列表，按用户名排序 |
-| `POST /api/admin/accounts` | 管理员 Cookie + CSRF 头；JSON：`username`, `password`, `role` | 201，`account` |
-| `PATCH /api/admin/accounts/<user_id>` | 管理员 Cookie + CSRF 头；JSON：`role`、布尔 `is_active`、`password` 中至少一项 | `account` |
+| `GET /api/admin/accounts` | 管理员 Cookie；可选 `limit`（1–100，默认 100）、`offset`（非负整数，至多 9 位） | `accounts` 列表，按登录账号排序 |
+| `POST /api/admin/accounts` | 管理员 Cookie + CSRF 头；JSON：`username`, `display_name`, `password`, `role` | 201，`account` |
+| `PATCH /api/admin/accounts/<user_id>` | 管理员 Cookie + CSRF 头；JSON：`username`、`display_name`、`role`、布尔 `is_active`、`password` 中至少一项 | `account` |
 | `GET /api/courses` | 管理员或教师 Cookie | `courses`，教师仅看到本人课程 |
 | `GET /api/admin/courses` | 管理员 Cookie | `courses`，含截止时间和维度设置 |
 | `GET /api/courses/<course_id>` | 管理员或该课程教师 Cookie | `course`，不存在返回 404 |
 
-`account` 包含 `user_id`、`username`、`role`、布尔 `is_active` 和整数 `created_at`。
+`account` 包含 `user_id`、登录账号 `username`、姓名 `display_name`、`role`、布尔 `is_active` 和整数 `created_at`；迁移的账号在补齐姓名前 `display_name` 为空字符串。
 `created_at` 与 `expires_at` 是 UTC Unix 秒。所有已登录的写请求携带 `X-CSRF-Token`，
 值从登录响应或 `/api/auth/me` 获取，并与当前会话绑定。登录要求 JSON 与自定义请求头，
 阻止浏览器通过跨站表单发起登录；不开放跨来源 CORS，存在 `Origin` 时须匹配请求来源。
@@ -101,8 +101,8 @@ CSRF 值由随机会话值通过 HMAC 派生，不是身份或角色凭证。
 | `TACES_SESSION_SECONDS` | `28800` | 绝对有效期，允许 60–86400 秒 |
 | `TACES_COOKIE_SECURE` | `false` | 本地 HTTP 开发可用；HTTPS 部署时设置 `true` |
 
-不存在的账号、错误密码和禁用账号均返回相同凭证错误。按规范化用户名计数，15 分钟内累计
-5 次失败后，该用户名后续登录返回 429；窗口届满恢复。限流状态跨进程、重启保留，
+不存在的账号、错误密码和禁用账号均返回相同凭证错误。按规范化登录账号计数，15 分钟内累计
+5 次失败后，该账号后续登录返回 429；窗口届满恢复。分配尚未使用的账号时清除其历史失败计数。限流状态跨进程、重启保留，
 不记录学生身份或 IP。此限流不能代替部署层的整体请求速率限制，也可能让被恶意尝试的账号暂时无法登录。
 本服务没有内置反向代理信任配置；HTTPS 代理部署须正确传递经过信任的外部请求协议和主机，
 避免来源校验不匹配。当前默认绑定本机回环地址。

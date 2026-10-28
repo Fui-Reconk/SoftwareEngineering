@@ -83,7 +83,7 @@ def test_upgrade_and_initialize_are_repeatable_with_current_accounts(version_one
     version_one.upgrade()
     with version_one.transaction() as connection:
         connection.execute(
-            "INSERT INTO identity.account VALUES ('u1', 'admin', 'encoded-password', 'admin', 1, 100)"
+            "INSERT INTO identity.account (user_id, username, password_hash, role, is_active, created_at) VALUES ('u1', 'admin', 'encoded-password', 'admin', 1, 100)"
         )
         connection.execute("INSERT INTO identity.auth_session VALUES (?, 'u1', 200)", ("b" * 64,))
         connection.execute("INSERT INTO identity.login_throttle VALUES (?, 1, 100)", ("c" * 64,))
@@ -94,7 +94,7 @@ def test_upgrade_and_initialize_are_repeatable_with_current_accounts(version_one
     assert core_snapshot(version_one) == before
     with version_one.read() as connection:
         assert tuple(connection.execute("SELECT * FROM identity.account").fetchone()) == (
-            "u1", "admin", "encoded-password", "admin", 1, 100
+            "u1", "admin", "encoded-password", "admin", 1, 100, ""
         )
         assert tuple(connection.execute("SELECT * FROM identity.auth_session").fetchone()) == (
             "b" * 64, "u1", 200
@@ -212,7 +212,7 @@ def test_account_role_and_active_constraints(database, role, active):
     with pytest.raises(sqlite3.IntegrityError):
         with database.transaction() as connection:
             connection.execute(
-                "INSERT INTO identity.account VALUES ('u1', 'staff', 'encoded-password', ?, ?, 100)",
+                "INSERT INTO identity.account (user_id, username, password_hash, role, is_active, created_at) VALUES ('u1', 'staff', 'encoded-password', ?, ?, 100)",
                 (role, active),
             )
 
@@ -223,7 +223,7 @@ def test_session_requires_an_account_and_is_removed_with_it(database):
             connection.execute("INSERT INTO identity.auth_session VALUES (?, 'missing', 200)", ("d" * 64,))
     with database.transaction() as connection:
         connection.execute(
-            "INSERT INTO identity.account VALUES ('u1', 'admin', 'encoded-password', 'admin', 1, 100)"
+            "INSERT INTO identity.account (user_id, username, password_hash, role, is_active, created_at) VALUES ('u1', 'admin', 'encoded-password', 'admin', 1, 100)"
         )
         connection.execute("INSERT INTO identity.auth_session VALUES (?, 'u1', 200)", ("d" * 64,))
         connection.execute("DELETE FROM identity.account WHERE user_id='u1'")

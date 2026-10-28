@@ -36,10 +36,10 @@ def test_real_http_admin_student_teacher_auditor_export_flow(app, database):
     try:
         admin, student, teacher, auditor = browser(), browser(), browser(), browser()
         headers = login(admin, "admin")
-        status, result = call(admin, "/api/admin/accounts", "POST", {"username": "teacher", "password": PASSWORD, "role": "teacher"}, headers)
+        status, result = call(admin, "/api/admin/accounts", "POST", {"username": "teacher", "display_name": "教师", "password": PASSWORD, "role": "teacher"}, headers)
         assert status == 201
         teacher_id = result["data"]["account"]["user_id"]
-        assert call(admin, "/api/admin/accounts", "POST", {"username": "auditor", "password": PASSWORD, "role": "auditor"}, headers)[0] == 201
+        assert call(admin, "/api/admin/accounts", "POST", {"username": "auditor", "display_name": "审计员", "password": PASSWORD, "role": "auditor"}, headers)[0] == 201
         status, _ = call(admin, "/api/admin/courses", "POST", {"course_id": "flow", "name": "网络闭环课", "teacher_id": teacher_id, "term": "2026秋"}, headers)
         assert status == 201
         status, result = call(admin, "/api/admin/courses/flow/evaluation-codes", "POST", {"count": 5}, headers)

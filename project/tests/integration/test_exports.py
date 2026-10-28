@@ -44,9 +44,9 @@ def test_export_filename_uses_snapshot_course_term_and_teacher_not_publication_i
         assert data["publicationId"] in text
 
 
-def test_history_filename_uses_original_course_term_and_current_assigned_teacher(staff):
+def test_history_filename_uses_original_course_term_and_published_teacher(staff):
     original_teacher, data = published(staff)
-    new_teacher = staff["auth"].create_account(staff["token"], "teacher2", PASSWORD, "teacher")
+    new_teacher = staff["auth"].create_account(staff["token"], "teacher2", PASSWORD, "teacher", "teacher2")
     changed = staff["client"].patch("/api/admin/courses/c1", json={
         "name": "新课程名", "term": "2027春", "teacher_id": new_teacher["user_id"]
     }, headers=staff["headers"])
@@ -56,20 +56,14 @@ def test_history_filename_uses_original_course_term_and_current_assigned_teacher
     client = staff["app"].test_client()
     client.set_cookie("taces_session", token, path="/api")
     response = client.get("/api/courses/c1/export?format=csv&publication=" + data["publicationId"])
-    assert attachment_name(response) == "数据结构_2026秋_teacher2.csv"
+    assert attachment_name(response) == "数据结构_2026秋_teacher.csv"
     assert csv_values(response)["publicationId"] == data["publicationId"]
 
 
 @pytest.mark.parametrize("username", [".teacher", "teacher.", "..."])
-def test_export_filename_preserves_valid_dots_in_teacher_username(staff, username):
-    _, data = published(staff)
-    teacher = staff["auth"].create_account(staff["token"], username, PASSWORD, "teacher")
-    changed = staff["client"].patch("/api/admin/courses/c1", json={"teacher_id": teacher["user_id"]},
-                                    headers=staff["headers"])
-    assert changed.status_code == 200
-    token, _ = staff["auth"].login(username, PASSWORD)
-    client = staff["app"].test_client()
-    client.set_cookie("taces_session", token, path="/api")
+def test_export_filename_preserves_valid_dots_in_teacher_name(staff, username):
+    staff["auth"].update_account(staff["token"], staff["teacher"]["user_id"], {"display_name": username})
+    client, data = published(staff)
     response = client.get("/api/courses/c1/export?format=csv&publication=" + data["publicationId"])
     assert attachment_name(response) == f"数据结构_2026秋_{username}.csv"
     assert csv_values(response)["publicationId"] == data["publicationId"]

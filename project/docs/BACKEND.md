@@ -12,7 +12,7 @@
 | --- | --- | --- |
 | 工程底座，第 1 片 | 已实现应用工厂、配置、JSON 错误、健康检查、三库事务 | src/taces/presentation、config.py、data/database.py（相对 project/） |
 | 账号权限，第 2a 片 | 已实现登录、退出、改密、账号管理、角色与课程归属 | src/taces/business/auth、presentation/routes/auth.py（相对 project/） |
-| 数据库 | 当前 schema 版本为 3，三库共 15 张表 | data/database.py 的 SCHEMA_VERSION / TABLES |
+| 数据库 | 当前 schema 版本为 4，三库共 15 张表 | data/database.py 的 SCHEMA_VERSION / TABLES |
 | 课程与评价码，第 2b 片 | 已实现管理员课程创建/修改、教师分配、评价窗口与随机评价码批量生成 | 本文第12节 |
 | 匿名提交，第3片 | 已实现无会话验码与原子提交，不要求CSRF | business/submission/service.py、routes/submissions.py |
 | 统计发布，第4片 | 已实现阈值、向量噪声、发布缓存、预算原子扣费 | 本文第14节 |
@@ -121,8 +121,8 @@ metadata.db（main） + identity.db + evaluation.db
 | project/db/evaluation.db / evaluation | rating、open_text | 不存学生标识、评价码、IP、精确提交时间 |
 | project/db/metadata.db / main | course、dimension、budget_ledger、audit_log、course_state、privacy_policy、agg_result | 课程、预算、审计元信息 |
 
-SQL 位于 project/src/taces/data/schema/，版本以 SCHEMA_VERSION=3 为准。
-八张原有核心表、三张账号表及四张工作流支撑表，共15张。原表不加列，保持原插入与匿名边界。course_state保存截止时间与数据版本，code_state仅保存码摘要及过期时间，privacy_policy保存配置，agg_result保存不可变发布快照。
+SQL 位于 project/src/taces/data/schema/，版本以 SCHEMA_VERSION=4 为准。
+八张原有核心表、三张账号表及四张工作流支撑表，共15张。v4在员工账号表增加姓名列，评价数据的匿名边界不变。course_state保存截止时间与数据版本，code_state仅保存码摘要及过期时间，privacy_policy保存配置，agg_result保存不可变发布快照。
 
 - rating 每维度一行，用随机 submission_id 将同份评价分组，同一份评价的维度不可重复。
 - open_text 通过 rating_id 关联其中一条评分，不将原文直接返回教师接口。
@@ -134,7 +134,7 @@ SQL 位于 project/src/taces/data/schema/，版本以 SCHEMA_VERSION=3 为准。
 - 版本与预期表名检查不是完整结构指纹、完整性检查或磁盘可写性证明。
 
 init-db 只为新库创建当前结构；当前版本可重复执行，保留数据。
-v1/v2必须显式upgrade-db，保留现有核心数据并更新三库版本至3。旧窗口与旧码默认关闭，需管理员明确重新配置并发行新码，不猜测旧教师ID到新账号的映射。未知/混合版本、缺失核心表拒绝接管。
+v1/v2/v3必须显式upgrade-db，保留现有数据并更新三库版本至4。旧账号姓名留空并由管理员补齐，不从登录账号推测真实姓名。v1/v2旧窗口与旧码默认关闭，需管理员明确重新配置并发行新码，不猜测旧教师ID到新账号的映射。未知/混合版本、缺失核心表拒绝接管。
 DDL、版本号与事务内的数据改变一起回滚；失败可能留下空文件，但不能靠删库绕过迁移。
 
 ## 6. 事务、读取和审计边界
@@ -250,7 +250,7 @@ node --test tests/js/board.test.cjs tests/js/config.test.cjs tests/js/evaluate.t
 | GET /api/courses/<id>/statistics | 未发布/阈值拒绝返回200；interval、spread、distinguishable由后端计算 |
 | 发布/读取 | 新发布扣预算，重复读取同一缓存免费 |
 | GET /api/admin/config | values、ranges、units；PATCH为顶层epsilon/k/epsilonTotal |
-| GET /api/admin/audit | 用户名、中文动作、Asia/Shanghai时间及独立courses筛选项 |
+| GET /api/admin/audit | 当前账号、不可变员工ID、中文动作、Asia/Shanghai时间及独立courses筛选项 |
 
 页面的USE_MOCK默认为false，登录使用真实账号，Cookie会话和按角色跳转由真实HTTP回归覆盖。Mock仍可手动启用，其模拟凭证与真实库互不关联；教师看板和侧栏独立入口均可导出已发布快照，Mock不支持文件导出。全部页面边缘交互尚未验收。
 
@@ -301,7 +301,7 @@ interval是90%同时噪声误差界，b为均值噪声尺度：min(4,向上保�
 GET/PATCH /api/admin/config只允许管理员；PATCH还需CSRF。返回values/ranges/units，epsilon范围0.01–1.0，k为整数3–50，epsilonTotal为每课0.1–20.0。预算只接受JSON数值，最多六位小数，拒绝bool/字符串/非有限数；单次epsilon不能超过总量。非法值或未知键422 INVALID_VALUE，error.field标明字段；空请求标为request。
 epsilonTotal明确设置时更新每课总上限和新课程默认值，保留已消费整数微单位；若低于任一已消费金额，整笔拒绝。epsilon/k实际变化才增加策略revision；仅改总上限不使同数据缓存失效。配置、所有课账本、成功审计同事务回滚。
 
-GET /api/admin/audit允许管理员与审计员；教师403。返回entries/next/courses，courses独立查询为[{course_id,name}]，不绕过课程API授权。日志映射固定中文动作、账号用户名和Asia/Shanghai时间；账号操作的目标转换为目标用户名，课程操作转为课程名。历史未知动作显示“历史操作”，不存在的历史账号显示“历史账号”。不返回密码/令牌/评价码/开放题原文。
+GET /api/admin/audit允许管理员与审计员；教师403。返回entries/next/courses，courses独立查询为[{course_id,name}]，不绕过课程API授权。日志映射固定中文动作、当前账号、不可变员工ID和Asia/Shanghai时间；账号改号时追加记录旧账号与新账号，账号操作提供目标ID，课程操作转为课程名。早期记录未保存当时账号，当前账号映射不代表历史值。历史未知动作显示“历史操作”，不存在的历史账号显示“历史账号”。不返回密码/令牌/评价码/开放题原文。
 支持from/to（YYYY-MM-DD本地日期或带时区ISO时间，最多六位小数秒）、course、limit（默认50，1–100）、offset（0–2147483647）。日期from含当天00:00，日期to含整天；ISO时间to含该时刻，拒绝无时区时间、超出微秒精度和反向范围。按整数UTC微秒比较与倒序，时间相同时按插入顺序倒序；next为下一页offset或null。未知/重复查询键和非法过滤400；查询本身不写审计，不递归留痕。
 预算JSON小数在解析时保留Decimal，先验证原始十进制范围和微单位可表示性，再转整数；不先经float舍入。审计过滤不使用会舍入至毫秒的julianday。
 极端指数导致Decimal无法表示时仍按原字段返回422；未知字段名含不可编码Unicode时以安全的field=request返回422，避免错误响应本身编码失败。
@@ -310,7 +310,7 @@ GET /api/admin/audit允许管理员与审计员；教师403。返回entries/next
 
 GET /api/courses/<id>/export?format=csv|pdf&publication=<可选快照编号>，format默认csv。必须具备exports:own且当前拥有该课；默认取最后发布，可指定32位十六进制publicationId。无任何快照409 NOT_PUBLISHED；指定快照不存在或不属于该课404 PUBLICATION_NOT_FOUND。格式/编号/未知或重复查询键错误400。
 导出服务只读agg_result.payload，不调用统计发布或读取评分原文；新提交尚未发布时仍导出旧快照。生成文件与导出审计处于同一事务，失败不返回文件；不加噪、不改账本。
-CSV为UTF-8 BOM的两列“指标/值”，基础键对应快照字段，维度/分布/词频键分别为dimension:<名称>、score:<1–5>、term:<公开词>，开放题噪声份数为openText.responses。字符串去前导空白后以=、+、-、@开头时加单引号，避免表格公式执行；数字保持数值。下载文件名由快照中的课程名称、学期和当前任课教师账号组成；发布编号保留在文件内容中。文件名中的非法字符会被替换，过长部分会截断。
+CSV为UTF-8 BOM的两列“指标/值”，基础键对应快照字段，维度/分布/词频键分别为dimension:<名称>、score:<1–5>、term:<公开词>，开放题噪声份数为openText.responses。字符串去前导空白后以=、+、-、@开头时加单引号，避免表格公式执行；数字保持数值。下载文件名由快照中的课程名称、学期和发布时教师姓名组成；发布编号和姓名保留在文件内容中。旧快照未保存姓名时，导出临时采用当前任课教师姓名并注明来源，不重写历史快照；当前姓名也缺失时显示“教师姓名待设置”。文件名中的非法字符会被替换，过长部分会截断。
 PDF使用ReportLab并对用户文字转义，表头跨页重复。优先使用环境变量TACES_PDF_FONT指定的本地TrueType/TTC字体，其次动态定位Windows字体目录中的simsun.ttc，再回退STSong-Light CID字体。机器字体路径仅在环境中配置，不写入仓库；非Windows字体回退尚未双平台验收。PDF与CSV均包含同一发布编号、时间和噪声结果，不含开放题原文。
 快照保留发布当时的课程名称/学期；后续改名不重写历史。显式字体配置失效时返回通用JSON 500并回滚导出留痕，不生成不完整文件。
 

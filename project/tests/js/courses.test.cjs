@@ -6,9 +6,9 @@ const vm = require('node:vm');
 
 const script = path.join(__dirname, '../../src/taces/presentation/static/js/pages/courses.js');
 const tick = () => new Promise(setImmediate);
-const activeTeacher = { user_id: 'teacher-1', username: 'li', role: 'teacher', is_active: true };
-const secondTeacher = { user_id: 'teacher-2', username: 'wang', role: 'teacher', is_active: true };
-const disabledTeacher = { user_id: 'teacher-3', username: 'disabled', role: 'teacher', is_active: false };
+const activeTeacher = { user_id: 'teacher-1', username: 'li', display_name: '李老师', role: 'teacher', is_active: true };
+const secondTeacher = { user_id: 'teacher-2', username: 'wang', display_name: '王老师', role: 'teacher', is_active: true };
+const disabledTeacher = { user_id: 'teacher-3', username: 'disabled', display_name: '停用教师', role: 'teacher', is_active: false };
 
 function node() {
   let text = '';
@@ -102,7 +102,7 @@ function editButton(view, index = 0) {
 
 test('admin can create a course assigned to an active teacher', async () => {
   const view = await render();
-  assert.equal(view.elements.get('courseRows').children[0].children[2].textContent, 'li');
+  assert.equal(view.elements.get('courseRows').children[0].children[2].textContent, '李老师（li）');
   await view.click('courseCreate');
   assert.equal(view.elements.get('courseDialog').open, true);
   assert.deepEqual(view.elements.get('courseTeacher').children.map(option => option.value), ['', 'teacher-1', 'teacher-2']);
@@ -131,7 +131,7 @@ test('editing a course transfers only the changed teacher and refreshes the list
   assert.deepEqual(view.requests.find(request => request.method === 'PATCH'), {
     method: 'PATCH', route: '/api/admin/courses/c1', body: { teacher_id: 'teacher-2' },
   });
-  assert.equal(view.elements.get('courseRows').children[0].children[2].textContent, 'wang');
+  assert.equal(view.elements.get('courseRows').children[0].children[2].textContent, '王老师（wang）');
   assert.equal(view.elements.get('courseDialog').open, false);
 });
 

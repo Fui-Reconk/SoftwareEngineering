@@ -18,9 +18,10 @@
       const tr = document.createElement('tr');
       const cells = [
         { text: entry.at.replace('T', ' ').slice(0, 16) },
-        { text: entry.actor },
+        { text: entry.actor + (entry.actorId ? ` · ${entry.actorId}` : ''), className: 'audit-identity' },
         { text: entry.action },
-        { text: entry.target || '-' },
+        { text: (entry.accountChange ? `${entry.accountChange.from} → ${entry.accountChange.to}` : entry.target || '-')
+          + (entry.targetId ? ` · ${entry.targetId}` : ''), className: 'audit-identity' },
         { text: entry.epsCost ? String(entry.epsCost) : '0', className: 'n num' },
       ];
       cells.forEach((cell) => {

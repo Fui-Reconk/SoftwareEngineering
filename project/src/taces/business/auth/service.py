@@ -6,9 +6,11 @@ All permission checks and writes share a transaction. No Flask dependency.
 from contextlib import contextmanager
 import hashlib
 import hmac
+import json
 import re
 import secrets
 import time
+import unicodedata
 from uuid import uuid4
 
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -29,8 +31,17 @@ def invalid(message="请求字段不合法。"):
 
 def username_value(value):
     if not isinstance(value, str) or not re.fullmatch(r"[A-Za-z0-9_.-]{3,64}", value):
-        raise invalid("用户名须为 3–64 位英文字母、数字、下划线、点或短横线。")
+        raise invalid("登录账号须为 3–64 位英文字母、数字、下划线、点或短横线。")
     return value.lower()
+
+
+def display_name_value(value):
+    if not isinstance(value, str):
+        raise invalid("姓名须为 1–64 个字符。")
+    value = value.strip()
+    if not 1 <= len(value) <= 64 or any(unicodedata.category(char).startswith("C") for char in value):
+        raise invalid("姓名须为 1–64 个有效字符。")
+    return value
 
 
 def password_value(value, minimum=12):
@@ -57,13 +68,13 @@ def csrf_token(token):
 
 def public_account(row):
     return {key: bool(row[key]) if key == "is_active" else row[key]
-            for key in ("user_id", "username", "role", "is_active", "created_at")}
+            for key in ("user_id", "username", "display_name", "role", "is_active", "created_at")}
 
 
-def audit(connection, actor, action):
+def audit(connection, actor, action, *, detail=None):
     connection.execute(
-        "INSERT INTO main.audit_log (log_id, actor, action) VALUES (?, ?, ?)",
-        (uuid4().hex, actor, action),
+        "INSERT INTO main.audit_log (log_id, actor, action, stat_type) VALUES (?, ?, ?, ?)",
+        (uuid4().hex, actor, action, json.dumps(detail) if detail else None),
     )
 
 
@@ -110,29 +121,32 @@ class AuthService:
             audit(connection, account["user_id"], "access.denied:" + action)
 
     @staticmethod
-    def _insert_account(connection, username, password_hash, role, actor):
+    def _insert_account(connection, username, display_name, password_hash, role, actor):
         if connection.execute(
             "SELECT 1 FROM identity.account WHERE username=?", (username,)
         ).fetchone():
-            raise ServiceError(409, "USERNAME_EXISTS", "用户名已存在。")
+            raise ServiceError(409, "USERNAME_EXISTS", "登录账号已存在。")
+        connection.execute("DELETE FROM identity.login_throttle WHERE username_hash=?",
+                           (hashlib.sha256(username.encode("ascii")).hexdigest(),))
         user_id = uuid4().hex
         connection.execute(
             "INSERT INTO identity.account "
-            "(user_id, username, password_hash, role, created_at) VALUES (?, ?, ?, ?, ?)",
-            (user_id, username, password_hash, role, int(time.time())),
+            "(user_id, username, display_name, password_hash, role, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+            (user_id, username, display_name, password_hash, role, int(time.time())),
         )
         audit(connection, actor, "account.create:" + user_id)
         return public_account(connection.execute(
             "SELECT * FROM identity.account WHERE user_id=?", (user_id,)
         ).fetchone())
 
-    def bootstrap_admin(self, username, password):
+    def bootstrap_admin(self, username, password, display_name=None):
         username = username_value(username)
+        display_name = "" if display_name is None else display_name_value(display_name)
         password_hash = generate_password_hash(password_value(password), method=PASSWORD_METHOD)
         with self.database.transaction() as connection:
             if connection.execute("SELECT 1 FROM identity.account LIMIT 1").fetchone():
                 raise ServiceError(409, "ALREADY_BOOTSTRAPPED", "已有账号，请由管理员管理账号。")
-            return self._insert_account(connection, username, password_hash, "admin", "system:bootstrap")
+            return self._insert_account(connection, username, display_name, password_hash, "admin", "system:bootstrap")
 
     def login(self, username, password, previous_token=None):
         username = username_value(username)
@@ -180,7 +194,7 @@ class AuthService:
                 result = {"account": public_account(account), "expires_at": expires_at, "csrf_token": csrf_token(token)}
         # Commit failed-attempt counters before returning the generic error.
         if failed:
-            raise ServiceError(401, "INVALID_CREDENTIALS", "用户名或密码不正确。")
+            raise ServiceError(401, "INVALID_CREDENTIALS", "账号或密码不正确。")
         return token, result
 
     def current(self, token):
@@ -211,24 +225,36 @@ class AuthService:
                 "SELECT * FROM identity.account ORDER BY username LIMIT ? OFFSET ?", (limit, offset)
             )]
 
-    def create_account(self, token, username, password, role):
+    def create_account(self, token, username, password, role, display_name):
         with self._operation(token, "accounts.create", write=True) as (connection, account):
             require_permission(account, "accounts:manage")
             username = username_value(username)
+            display_name = display_name_value(display_name)
             password_value(password)
             if not isinstance(role, str) or role not in PERMISSIONS:
                 raise invalid("角色须为 admin、teacher 或 auditor。")
-            return self._insert_account(connection, username,
+            return self._insert_account(connection, username, display_name,
                 generate_password_hash(password, method=PASSWORD_METHOD), role, account["user_id"])
 
     def update_account(self, token, user_id, changes):
         with self._operation(token, "accounts.update", write=True) as (connection, actor):
             require_permission(actor, "accounts:manage")
-            if not changes or changes.keys() - {"role", "is_active", "password"}:
+            if not changes or changes.keys() - {"role", "is_active", "password", "username", "display_name"}:
                 raise invalid()
             target = connection.execute("SELECT * FROM identity.account WHERE user_id=?", (user_id,)).fetchone()
             if target is None:
                 raise ServiceError(404, "ACCOUNT_NOT_FOUND", "账号不存在。")
+            username = username_value(changes.get("username", target["username"]))
+            display_name = display_name_value(changes["display_name"]) if "display_name" in changes else target["display_name"]
+            if username != target["username"] and connection.execute(
+                "SELECT 1 FROM identity.account WHERE username=?", (username,)
+            ).fetchone():
+                raise ServiceError(409, "USERNAME_EXISTS", "登录账号已存在。")
+            account_change = None
+            if username != target["username"]:
+                account_change = {"from": target["username"], "to": username}
+                connection.execute("DELETE FROM identity.login_throttle WHERE username_hash=?",
+                                   (hashlib.sha256(username.encode("ascii")).hexdigest(),))
             role = changes.get("role", target["role"])
             active = changes.get("is_active", bool(target["is_active"]))
             if not isinstance(role, str) or role not in PERMISSIONS or type(active) is not bool:
@@ -245,11 +271,11 @@ class AuthService:
             if "password" in changes:
                 password_hash = generate_password_hash(password_value(changes["password"]), method=PASSWORD_METHOD)
             connection.execute(
-                "UPDATE identity.account SET role=?, is_active=?, password_hash=? WHERE user_id=?",
-                (role, int(active), password_hash, user_id),
+                "UPDATE identity.account SET username=?, display_name=?, role=?, is_active=?, password_hash=? WHERE user_id=?",
+                (username, display_name, role, int(active), password_hash, user_id),
             )
             connection.execute("DELETE FROM identity.auth_session WHERE user_id=?", (user_id,))
-            audit(connection, actor["user_id"], "account.update:" + user_id)
+            audit(connection, actor["user_id"], "account.update:" + user_id, detail=account_change)
             return public_account(connection.execute("SELECT * FROM identity.account WHERE user_id=?", (user_id,)).fetchone())
 
     def list_courses(self, token):

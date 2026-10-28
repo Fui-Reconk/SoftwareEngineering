@@ -47,10 +47,17 @@ test('a teacher without courses can retry or log out instead of being stranded',
   assert.match(view.elements.get('entryTitle').textContent, /没有.*课程/);
   assert.equal(view.elements.get('entryRetry').hidden, false);
   assert.equal(view.elements.get('entryLogout').hidden, false);
+  assert.equal(view.elements.get('entryPassword').hidden, false);
   assert.equal(view.csrf.content, 'csrf');
   view.courses.push({ course_id: 'course-1', name: '课程' });
   await view.click('entryRetry');
   assert.deepEqual(view.redirects, ['/teacher/course-1']);
+});
+
+test('the admin workspace never exposes the password action while redirecting', async () => {
+  const view = await render({ role: 'admin' });
+  assert.equal(view.elements.get('entryPassword').hidden, true);
+  assert.deepEqual(view.redirects, ['/admin/config']);
 });
 
 test('logout from an unassigned teacher workspace clears the session', async () => {

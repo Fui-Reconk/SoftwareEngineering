@@ -165,7 +165,10 @@ def test_staff_password_page_and_workspace_link(app):
     assert 'id="newPassword"' in body
     assert 'id="confirmPassword"' in body
     assert 'href="/account/password"' in client.get("/workspace").get_data(as_text=True)
-    assert 'href="/account/password"' in client.get("/admin/courses").get_data(as_text=True)
+    shell = client.get("/admin/courses").get_data(as_text=True)
+    assert 'href="/account/password"' in shell
+    # The action stays hidden until the client has confirmed the account role.
+    assert re.search(r'<a\b(?=[^>]*\bid="changePassword")(?=[^>]*\bhidden(?:\s|>|=))[^>]*>', shell)
 
 
 def test_course_page_exposes_deadline_dimensions_and_code_issuance(app):

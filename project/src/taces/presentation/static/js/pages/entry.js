@@ -22,8 +22,8 @@
       const session = await window.API.get('/api/auth/me');
       csrf.content = session.csrf_token || '';
       logout.hidden = false;
-      passwordLink.hidden = false;
       const role = session.account.role;
+      passwordLink.hidden = !['teacher', 'auditor'].includes(role);
       if (role === 'admin') {
         window.location.replace('/admin/config');
         return;

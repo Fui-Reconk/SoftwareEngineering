@@ -133,7 +133,11 @@ a:hover { text-decoration: underline; text-underline-offset: 3px; }
 .who { display: grid; gap: 1px; padding: 0 2px; }
 .who-name { font-size: 13px; font-weight: 500; }
 .who-meta { font-size: 12px; color: #466966; }
-#signOut { justify-self: start; height: 32px; padding: 0 10px; background: #c7e5e2; color: #00565c; }
+.account-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+#changePassword, #signOut { height: 32px; padding: 0 10px; color: #00565c; white-space: nowrap; }
+#changePassword { background: #dcefeb; }
+#changePassword:hover { background: #d1e8e4; }
+#signOut { background: #c7e5e2; }
 #signOut:hover { background: #b7dedb; color: #003f44; }
 
 .frame { display: flex; flex-direction: column; min-width: 0; }
@@ -305,6 +309,7 @@ a:hover { text-decoration: underline; text-underline-offset: 3px; }
   .gated { grid-template-columns: minmax(0, 1fr); gap: 24px; }
   .gated-main .caption { margin-top: 0; padding-top: 16px; }
   .btn, .course { min-height: 32px; }
+  #changePassword, #signOut { min-height: 44px; }
 }
 
 @media (max-width: 480px) {

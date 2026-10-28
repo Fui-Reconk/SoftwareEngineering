@@ -10,6 +10,7 @@
   const courseSection = document.getElementById('courseSection');
   const staffNav = document.getElementById('staffNav');
   const accountBox = document.getElementById('accountBox');
+  const changePassword = document.getElementById('changePassword');
   const currentCode = document.querySelector('[data-course]')?.dataset.course || '';
 
   function setMenu(open) {
@@ -87,6 +88,7 @@
     meta.className = 'who-meta';
     meta.textContent = { teacher: '教师', admin: '管理员', auditor: '审计员' }[account.role] || account.role;
     accountBox.append(name, meta);
+    changePassword.hidden = !['teacher', 'auditor'].includes(account.role);
   }
 
   const signOut = document.getElementById('signOut');

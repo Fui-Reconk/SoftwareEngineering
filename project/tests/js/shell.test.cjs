@@ -34,6 +34,7 @@ async function render(role, { pathname = '/admin/config', courses = [], failure 
   }
   element('staffNav').hidden = true;
   element('courseSection').hidden = true;
+  element('changePassword').hidden = true;
   const csrf = { content: '' };
   const context = vm.createContext({
     document: {
@@ -81,6 +82,17 @@ test('admin has account management, configuration and audit destinations without
   assert.equal(nav.children[3].attributes['aria-current'], 'page');
   assert.equal(view.elements.get('courseSection').hidden, true);
   assert.equal(view.csrf.content, 'test-csrf');
+});
+
+test('only teachers and auditors see the password action after the session loads', async () => {
+  for (const role of ['teacher', 'auditor']) {
+    const view = await render(role);
+    assert.equal(view.elements.get('changePassword').hidden, false, role);
+  }
+  const admin = await render('admin');
+  assert.equal(admin.elements.get('changePassword').hidden, true);
+  const expired = await render('teacher', { unauthorized: true });
+  assert.equal(expired.elements.get('changePassword').hidden, true);
 });
 
 test('account management is marked as the current destination for an admin', async () => {

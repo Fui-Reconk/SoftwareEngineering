@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "_password_toggle.html" import password_toggle %}
 
 {% block title %}账号管理 · TACES{% endblock %}
 {% block styles %}<link rel="stylesheet" href="{{ url_for('static', filename='css/accounts.css') }}">{% endblock %}
@@ -77,12 +78,15 @@
             <option value="false">停用</option>
           </select>
         </label>
-        <label class="field">
-          <span class="field-label" id="accountPasswordLabel">初始密码</span>
-          <input class="input" id="accountPassword" type="password" autocomplete="new-password"
-                 minlength="12" maxlength="128" required>
+        <div class="field">
+          <label class="field-label" id="accountPasswordLabel" for="accountPassword">初始密码</label>
+          <div class="password-control">
+            <input class="input" id="accountPassword" type="password" autocomplete="new-password"
+                   aria-describedby="accountPasswordHint" minlength="12" maxlength="128" required>
+            {{ password_toggle('accountPassword', '密码') }}
+          </div>
           <span class="caption" id="accountPasswordHint">12–128 个字符。</span>
-        </label>
+        </div>
         <p class="caption" id="accountSessionHint" hidden>保存修改后，该账号需要重新登录。</p>
         <p class="form-error" id="accountFormError" role="alert" hidden></p>
         <div class="accounts-form-actions">
@@ -96,5 +100,6 @@
 {% endblock %}
 
 {% block scripts %}
+<script src="{{ url_for('static', filename='js/password-toggle.js') }}"></script>
 <script src="{{ url_for('static', filename='js/pages/accounts.js') }}"></script>
 {% endblock %}

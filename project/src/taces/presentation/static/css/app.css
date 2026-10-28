@@ -357,6 +357,18 @@ a:hover { text-decoration: underline; text-underline-offset: 3px; }
 }
 .input:focus-visible { outline-offset: 0; }
 .input::placeholder { color: var(--faint); }
+.password-control { position: relative; min-width: 0; }
+.password-control .input { height: 44px; padding-right: 52px; }
+.password-control .input::-ms-reveal { display: none; }
+.password-toggle {
+  position: absolute; right: 0; top: 50%; transform: translateY(-50%);
+  display: grid; place-items: center; width: 44px; height: 44px; padding: 0;
+  color: var(--muted); background: transparent; border: 0; border-radius: var(--radius-control); cursor: pointer;
+}
+.password-toggle:hover { color: var(--text); }
+.password-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: -3px; }
+.password-toggle svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.password-toggle[aria-pressed="false"] .password-eye-slash { display: none; }
 .form-error { font-size: var(--fs-small); line-height: 19px; color: var(--negative); }
 
 .form .btn { height: 40px; }

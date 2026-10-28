@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "_password_toggle.html" import password_toggle %}
 
 {% block title %}教职工登录 · TACES{% endblock %}
 {% block body_class %} page-login{% endblock %}
@@ -15,10 +16,13 @@
         <input class="input" type="text" name="username" autocomplete="username"
                autocapitalize="none" spellcheck="false" required>
       </label>
-      <label class="field">
-        <span class="field-label">密码</span>
-        <input class="input" type="password" name="password" autocomplete="current-password" required>
-      </label>
+      <div class="field">
+        <label class="field-label" for="loginPassword">密码</label>
+        <div class="password-control">
+          <input class="input" id="loginPassword" type="password" name="password" autocomplete="current-password" required>
+          {{ password_toggle('loginPassword', '密码') }}
+        </div>
+      </div>
       <p class="form-error" id="loginError" role="alert" hidden></p>
       <button class="btn primary" type="submit">登录</button>
       <a class="form-link" href="{{ url_for('pages.student_code') }}">返回学生评教</a>
@@ -35,5 +39,6 @@
 {% block page_footer %}{% include "_page_footer.html" %}{% endblock %}
 
 {% block scripts %}
+<script src="{{ url_for('static', filename='js/password-toggle.js') }}"></script>
 <script src="{{ url_for('static', filename='js/pages/login.js') }}"></script>
 {% endblock %}

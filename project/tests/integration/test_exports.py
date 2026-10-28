@@ -2,8 +2,9 @@ import csv
 from io import BytesIO, StringIO
 
 import pytest
+from werkzeug.http import parse_options_header
 
-from tests.workflow_support import staff, create_course, login_role
+from tests.workflow_support import PASSWORD, staff, create_course, login_role
 from tests.integration.test_statistics import seed_responses, publication_counts
 
 
@@ -20,6 +21,86 @@ def csv_values(response):
     assert response.mimetype == "text/csv"
     assert response.data.startswith(b"\xef\xbb\xbf")
     return dict(list(csv.reader(StringIO(response.data.decode("utf-8-sig"))))[1:])
+
+
+def attachment_name(response):
+    disposition, options = parse_options_header(response.headers["Content-Disposition"])
+    assert disposition == "attachment"
+    return options["filename"]
+
+
+@pytest.mark.parametrize("format", ["csv", "pdf"])
+def test_export_filename_uses_snapshot_course_term_and_teacher_not_publication_id(staff, format):
+    teacher, data = published(staff)
+    response = teacher.get(f"/api/courses/c1/export?format={format}")
+    assert response.status_code == 200
+    assert attachment_name(response) == f"数据结构_2026秋_teacher.{format}"
+    assert data["publicationId"] not in attachment_name(response)
+    if format == "csv":
+        assert csv_values(response)["publicationId"] == data["publicationId"]
+    else:
+        from pypdf import PdfReader
+        text = "\n".join(page.extract_text() for page in PdfReader(BytesIO(response.data)).pages)
+        assert data["publicationId"] in text
+
+
+def test_history_filename_uses_original_course_term_and_current_assigned_teacher(staff):
+    original_teacher, data = published(staff)
+    new_teacher = staff["auth"].create_account(staff["token"], "teacher2", PASSWORD, "teacher")
+    changed = staff["client"].patch("/api/admin/courses/c1", json={
+        "name": "新课程名", "term": "2027春", "teacher_id": new_teacher["user_id"]
+    }, headers=staff["headers"])
+    assert changed.status_code == 200
+    assert original_teacher.get("/api/courses/c1/export?format=csv").status_code == 403
+    token, _ = staff["auth"].login("teacher2", PASSWORD)
+    client = staff["app"].test_client()
+    client.set_cookie("taces_session", token, path="/api")
+    response = client.get("/api/courses/c1/export?format=csv&publication=" + data["publicationId"])
+    assert attachment_name(response) == "数据结构_2026秋_teacher2.csv"
+    assert csv_values(response)["publicationId"] == data["publicationId"]
+
+
+@pytest.mark.parametrize("username", [".teacher", "teacher.", "..."])
+def test_export_filename_preserves_valid_dots_in_teacher_username(staff, username):
+    _, data = published(staff)
+    teacher = staff["auth"].create_account(staff["token"], username, PASSWORD, "teacher")
+    changed = staff["client"].patch("/api/admin/courses/c1", json={"teacher_id": teacher["user_id"]},
+                                    headers=staff["headers"])
+    assert changed.status_code == 200
+    token, _ = staff["auth"].login(username, PASSWORD)
+    client = staff["app"].test_client()
+    client.set_cookie("taces_session", token, path="/api")
+    response = client.get("/api/courses/c1/export?format=csv&publication=" + data["publicationId"])
+    assert attachment_name(response) == f"数据结构_2026秋_{username}.csv"
+    assert csv_values(response)["publicationId"] == data["publicationId"]
+
+
+@pytest.mark.parametrize(("course", "term", "expected"), [
+    (".NET 程序设计", "2026秋.", "_.NET 程序设计_2026秋._teacher.csv"),
+    ("...", "...", "_..._..._teacher.csv"),
+])
+def test_export_filename_preserves_dots_in_course_and_term(staff, course, term, expected):
+    teacher, data = published(staff, name=course, term=term)
+    response = teacher.get("/api/courses/c1/export?format=csv")
+    assert attachment_name(response) == expected
+    assert csv_values(response)["publicationId"] == data["publicationId"]
+
+
+def test_export_filename_sanitizes_unsafe_characters(staff):
+    teacher, _ = published(staff, name="课程/实验\\A:*\r\n奇", term="2026|秋")
+    response = teacher.get("/api/courses/c1/export?format=csv")
+    assert attachment_name(response) == "课程 实验 A 奇_2026 秋_teacher.csv"
+    assert "\r" not in response.headers["Content-Disposition"]
+    assert "\n" not in response.headers["Content-Disposition"]
+
+
+def test_export_filename_limits_long_unicode_names_without_losing_extension(staff):
+    teacher, _ = published(staff, name="课" * 200, term="春" * 100)
+    response = teacher.get("/api/courses/c1/export?format=csv")
+    name = attachment_name(response)
+    assert name.startswith("课") and "_春" in name and name.endswith("_teacher.csv")
+    assert len(name.encode("utf-8")) <= 255
+    assert "�" not in name
 
 
 def test_csv_reuses_exact_publication_without_spending_or_resampling(staff):
@@ -74,9 +155,8 @@ def test_csv_neutralizes_formula_cells_and_download_filename_is_safe(staff):
     values = csv_values(response)
     assert values["courseTitle"] == "'=SUM(1,2)"
     assert values["term"] == "'@malicious"
-    assert "SUM" not in response.headers["Content-Disposition"]
-    assert "attachment;" in response.headers["Content-Disposition"]
-    assert f"statistics-{data['publicationId']}.csv" in response.headers["Content-Disposition"]
+    assert attachment_name(response) == "=SUM(1,2)_@malicious_teacher.csv"
+    assert data["publicationId"] not in attachment_name(response)
 
 
 def test_pdf_contains_chinese_and_exact_saved_numbers(staff):

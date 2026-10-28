@@ -310,7 +310,7 @@ GET /api/admin/audit允许管理员与审计员；教师403。返回entries/next
 
 GET /api/courses/<id>/export?format=csv|pdf&publication=<可选快照编号>，format默认csv。必须具备exports:own且当前拥有该课；默认取最后发布，可指定32位十六进制publicationId。无任何快照409 NOT_PUBLISHED；指定快照不存在或不属于该课404 PUBLICATION_NOT_FOUND。格式/编号/未知或重复查询键错误400。
 导出服务只读agg_result.payload，不调用统计发布或读取评分原文；新提交尚未发布时仍导出旧快照。生成文件与导出审计处于同一事务，失败不返回文件；不加噪、不改账本。
-CSV为UTF-8 BOM的两列“指标/值”，基础键对应快照字段，维度/分布/词频键分别为dimension:<名称>、score:<1–5>、term:<公开词>，开放题噪声份数为openText.responses。字符串去前导空白后以=、+、-、@开头时加单引号，避免表格公式执行；数字保持数值。下载文件名仅由保存的发布编号和格式构成。
+CSV为UTF-8 BOM的两列“指标/值”，基础键对应快照字段，维度/分布/词频键分别为dimension:<名称>、score:<1–5>、term:<公开词>，开放题噪声份数为openText.responses。字符串去前导空白后以=、+、-、@开头时加单引号，避免表格公式执行；数字保持数值。下载文件名由快照中的课程名称、学期和当前任课教师账号组成；发布编号保留在文件内容中。文件名中的非法字符会被替换，过长部分会截断。
 PDF使用ReportLab并对用户文字转义，表头跨页重复。优先使用环境变量TACES_PDF_FONT指定的本地TrueType/TTC字体，其次动态定位Windows字体目录中的simsun.ttc，再回退STSong-Light CID字体。机器字体路径仅在环境中配置，不写入仓库；非Windows字体回退尚未双平台验收。PDF与CSV均包含同一发布编号、时间和噪声结果，不含开放题原文。
 快照保留发布当时的课程名称/学期；后续改名不重写历史。显式字体配置失效时返回通用JSON 500并回滚导出留痕，不生成不完整文件。
 

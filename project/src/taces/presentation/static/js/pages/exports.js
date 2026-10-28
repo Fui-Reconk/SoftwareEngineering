@@ -74,7 +74,7 @@
         const link = document.createElement('a');
         link.href = url;
         link.download = file.filename && file.filename.toLowerCase().endsWith(`.${format}`)
-          ? file.filename : `statistics-${target || 'latest'}.${format}`;
+          ? file.filename : `课程评价.${format}`;
         document.body.appendChild(link);
         link.click();
         link.remove();

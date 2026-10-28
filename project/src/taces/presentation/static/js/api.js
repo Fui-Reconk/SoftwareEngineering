@@ -36,6 +36,24 @@ window.API = (() => {
     return value;
   }
 
+  function attachmentFilename(disposition) {
+    const extended = /(?:^|;)\s*filename\*\s*=\s*(?:"([^"]*)"|([^;]*))/i.exec(disposition);
+    let name;
+    if (extended) {
+      const value = (extended[1] ?? extended[2]).trim();
+      const encoded = /^UTF-8'[^']*'(.*)$/i.exec(value);
+      if (!encoded) return null;
+      try { name = decodeURIComponent(encoded[1]); } catch (ignored) { return null; }
+    } else {
+      const plain = /(?:^|;)\s*filename\s*=\s*(?:"([^"]*)"|([^;\s]+))/i.exec(disposition);
+      if (!plain) return null;
+      name = plain[1] ?? plain[2];
+    }
+    if (!name || name.startsWith('.') || !/\.(?:csv|pdf)$/i.test(name)
+        || /[\\/:*?"<>|\p{Cc}\p{Cf}\p{Cs}]/u.test(name)) return null;
+    return name;
+  }
+
   async function fromServer(path, method, body, binary = false) {
     const headers = { 'X-TACES-Request': '1' };
     if (body !== undefined) headers['Content-Type'] = 'application/json';
@@ -68,8 +86,7 @@ window.API = (() => {
       const blob = await response.blob();
       if (binary !== 'metadata') return blob;
       const disposition = response.headers.get('Content-Disposition') || '';
-      const match = /(?:^|;)\s*filename="?(statistics-[0-9a-f]{32}\.(?:csv|pdf))"?\s*(?:;|$)/i.exec(disposition);
-      return { blob, filename: match ? match[1] : null };
+      return { blob, filename: attachmentFilename(disposition) };
     }
     const payload = await response.json().catch(() => ({}));
     return payload.data;

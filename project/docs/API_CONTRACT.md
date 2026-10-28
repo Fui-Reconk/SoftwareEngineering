@@ -128,7 +128,7 @@ from/to支持上海本地YYYY-MM-DD日期和带时区ISO时间（最多六位小
 
 ### 6. 快照导出（第6片）
 
-`GET /api/courses/<course_id>/export?format=csv|pdf&publication=<可选publicationId>`，仅课程所属教师。format默认csv，指定publicationId可取历史发布；省略则取最后一次发布。返回附件文件，不套JSON data。CSV为UTF-8 BOM；PDF支持中文。导出不触发发布、不扣预算，保留与看板相同的快照编号、时间和数值。
+`GET /api/courses/<course_id>/export?format=csv|pdf&publication=<可选publicationId>`，仅课程所属教师。format默认csv，指定publicationId可取历史发布；省略则取最后一次发布。返回附件文件，不套JSON data。CSV为UTF-8 BOM；PDF支持中文。文件名为“课程名_学期_教师账号”，课程名与学期取自发布快照，教师账号为当前任课教师。发布编号写在文件内容中；导出不触发发布、不扣预算，保留与看板相同的快照编号、时间和数值。
 无发布409 NOT_PUBLISHED，指定快照不存在或不属于该课404 PUBLICATION_NOT_FOUND，非法/重复/未知查询参数400。看板按当前显示的 `publicationId` 导出，避免页面过期时误取较新的快照；也可输入已知的历史编号导出。教师侧栏的独立导出页只读取课程列表并调用导出接口，可直接下载最近一次或指定编号的已发布快照。Mock 模式不支持文件导出。
 
 ## 差异登记

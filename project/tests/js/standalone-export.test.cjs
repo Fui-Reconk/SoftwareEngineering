@@ -19,7 +19,7 @@ async function page({ role = 'teacher', courses = [{course_id: 'course 1', name:
     window: { SHELL: { ready: Promise.resolve({ account: { role } }) },
       location: { pathname: '/teacher/exports/history', replace(url) { redirects.push(url); } },
       API: { async get(route) { calls.push(route); if (failure) throw failure; return { courses }; },
-        async downloadWithMetadata(route) { calls.push(route); if (downloadFailure) throw downloadFailure; return { blob: {}, filename: `statistics-${'b'.repeat(32)}.${route.includes('format=pdf') ? 'pdf' : 'csv'}` }; } },
+        async downloadWithMetadata(route) { calls.push(route); if (downloadFailure) throw downloadFailure; return { blob: {}, filename: `课程 A_2026秋_teacher.${route.includes('format=pdf') ? 'pdf' : 'csv'}` }; } },
       URL: { createObjectURL() { return 'blob:export'; }, revokeObjectURL() {} }, setTimeout(fn) { fn(); } } });
   vm.runInContext(readFileSync(file, 'utf8'), context);
   await tick(); await tick();
@@ -31,7 +31,7 @@ test('teacher can export the latest snapshot without triggering statistics', asy
   view.elements.get('exportCourse').value = 'course 1';
   await view.click('exportLatestPdf');
   assert.deepEqual(view.calls, ['/api/courses', '/api/courses/course%201/export?format=pdf']);
-  assert.deepEqual(view.downloads, [`statistics-${'b'.repeat(32)}.pdf`]);
+  assert.deepEqual(view.downloads, ['课程 A_2026秋_teacher.pdf']);
 });
 
 test('teacher can export a known historical publication without triggering statistics', async () => {

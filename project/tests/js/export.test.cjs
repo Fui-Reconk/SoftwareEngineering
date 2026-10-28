@@ -31,8 +31,9 @@ async function page(data = published, failure = null) {
     document: { getElementById: element, createElement: node, body: { appendChild() {} } },
     URLSearchParams,
     window: { SHELL: { ready: Promise.resolve() }, location: { replace() {} },
-      API: { get: async () => data, download: async route => {
-        requests.push(route); if (failure) throw failure; return { file: true };
+      API: { get: async () => data, downloadWithMetadata: async route => {
+        requests.push(route); if (failure) throw failure;
+        return { blob: { file: true }, filename: `课程_秋_teacher.${route.includes('format=pdf') ? 'pdf' : 'csv'}` };
       } },
       URL: { createObjectURL: () => 'blob:download', revokeObjectURL: value => revoked.push(value) },
       Charts: { fmt: { int: String, dec: p => v => Number(v).toFixed(p), pct: p => v => (v * 100).toFixed(p) + '%' }, intervals() {}, bars() {} },
@@ -55,7 +56,7 @@ test('published snapshots download the exact displayed publication in both forma
     `/api/courses/CS-1/export?format=pdf&publication=${publication}`,
     `/api/courses/CS-1/export?format=csv&publication=${publication}`,
   ]);
-  assert.deepEqual(view.downloads.map(item => item.filename), [`statistics-${publication}.pdf`, `statistics-${publication}.csv`]);
+  assert.deepEqual(view.downloads.map(item => item.filename), ['课程_秋_teacher.pdf', '课程_秋_teacher.csv']);
   assert.equal(view.revoked.length, 2);
 });
 
@@ -109,7 +110,7 @@ test('a teacher can export an older saved snapshot by its publication number', a
   view.elements.get('historyId').value = old;
   await view.click('historyCsv');
   assert.equal(view.requests[0], `/api/courses/CS-1/export?format=csv&publication=${old}`);
-  assert.equal(view.downloads[0].filename, `statistics-${old}.csv`);
+  assert.equal(view.downloads[0].filename, '课程_秋_teacher.csv');
 });
 
 test('an invalid history number does not send a download request', async () => {
@@ -121,14 +122,25 @@ test('an invalid history number does not send a download request', async () => {
 });
 
 
-test('binary download metadata keeps the backend publication filename', async () => {
+test('binary download metadata decodes the backend UTF-8 attachment filename', async () => {
   const context = vm.createContext({ document: { querySelector: () => null }, window: {}, URLSearchParams,
     fetch: async () => ({ ok: true, blob: async () => ({ file: true }),
-      headers: { get: name => name === 'Content-Disposition' ? `attachment; filename=statistics-${publication}.csv` : null } }) });
+      headers: { get: name => name === 'Content-Disposition'
+        ? "attachment; filename=_2026_teacher.csv; filename*=UTF-8''%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84_2026%E7%A7%8B_teacher.csv" : null } }) });
   vm.runInContext(apiSource, context);
   const result = await context.window.API.downloadWithMetadata('/api/courses/CS-1/export?format=csv');
-  assert.equal(result.filename, `statistics-${publication}.csv`);
+  assert.equal(result.filename, '数据结构_2026秋_teacher.csv');
   assert.equal(result.blob.file, true);
+});
+
+test('binary metadata rejects encoded paths and malformed UTF-8 filenames', async () => {
+  for (const disposition of ["attachment; filename*=UTF-8''..%2Fevil.csv", "attachment; filename*=UTF-8''%E6%ZZ.csv"]) {
+    const context = vm.createContext({ document: { querySelector: () => null }, window: {}, URLSearchParams,
+      fetch: async () => ({ ok: true, blob: async () => ({}), headers: { get: () => disposition } }) });
+    vm.runInContext(apiSource, context);
+    const result = await context.window.API.downloadWithMetadata('/api/courses/CS-1/export?format=csv');
+    assert.equal(result.filename, null);
+  }
 });
 
 

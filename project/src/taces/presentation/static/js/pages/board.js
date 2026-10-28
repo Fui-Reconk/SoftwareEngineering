@@ -101,12 +101,13 @@
     error.hidden = true;
     try {
       const params = new URLSearchParams({ format, publication: target });
-      const blob = await window.API.download(`/api/courses/${encodeURIComponent(code)}/export?${params}`);
-      const url = window.URL.createObjectURL(blob);
+      const file = await window.API.downloadWithMetadata(`/api/courses/${encodeURIComponent(code)}/export?${params}`);
+      const url = window.URL.createObjectURL(file.blob);
       try {
         const link = document.createElement('a');
         link.href = url;
-        link.download = `statistics-${target}.${format}`;
+        link.download = file.filename && file.filename.toLowerCase().endsWith(`.${format}`)
+          ? file.filename : `课程评价.${format}`;
         document.body.appendChild(link);
         link.click();
         link.remove();

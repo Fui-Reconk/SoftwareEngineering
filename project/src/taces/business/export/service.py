@@ -8,6 +8,7 @@ import os
 from pathlib import Path
 import re
 from threading import RLock
+import unicodedata
 from xml.sax.saxutils import escape
 
 from taces.business.auth.policy import require_course_access, require_permission
@@ -102,10 +103,30 @@ def render_pdf(data):
         doc = SimpleDocTemplate(buffer, pagesize=A4, leftMargin=42, rightMargin=42,
                                 topMargin=40, bottomMargin=40, title="TACES课程评价发布快照", author="TACES")
         story = [Paragraph("TACES 课程评价发布快照", title),
-                 Paragraph("本文件复用已发布快照，导出不重新采样、不扣隐私预算。", body), Spacer(1, 12), table, Spacer(1, 12),
-                 Paragraph("评分、分布和词频经过噪声处理。精确参与数为公开信息。区间表示90%同时噪声误差界，不是总体抽样置信区间。", body)]
+                 Paragraph("评分、分布和词频经过噪声处理。精确参与数为公开信息。区间表示90%同时噪声误差界，不是总体抽样置信区间。", body), Spacer(1, 12), table, Spacer(1, 12)]
         doc.build(story)
         return buffer.getvalue()
+
+
+def filename_part(value, fallback, max_bytes):
+    # The metadata can contain characters forbidden in Windows paths or HTTP headers.
+    cleaned = "".join(
+        " " if char in '<>:"/\\|?*' or unicodedata.category(char).startswith("C") else char
+        for char in value
+    )
+    cleaned = " ".join(cleaned.split())
+    # Bound the full filename for filesystems with a 255-byte component limit.
+    clipped = cleaned.encode("utf-8")[:max_bytes].decode("utf-8", errors="ignore").rstrip()
+    return clipped or fallback
+
+
+def export_filename(data, teacher, format):
+    parts = [filename_part(data["courseTitle"], "课程", 110),
+             filename_part(data["term"], "学期", 70),
+             filename_part(teacher, "教师", 64)]
+    filename = "_".join(parts) + "." + format
+    # Keep leading dots as part of the course name without creating a hidden file.
+    return "_" + filename if filename.startswith(".") else filename
 
 
 class ExportService:
@@ -137,4 +158,4 @@ class ExportService:
             data = json.loads(saved["payload"])
             content = render_csv(data) if format == "csv" else render_pdf(data)
             write_audit(con, actor["user_id"], "export." + format, course_id=course_id)
-            return content, "statistics-" + saved["publication_id"] + "." + format
+            return content, export_filename(data, actor["username"], format)

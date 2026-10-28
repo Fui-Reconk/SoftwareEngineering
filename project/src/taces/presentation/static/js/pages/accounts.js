@@ -14,6 +14,9 @@
   const listError = byId('accountsError');
   const retry = byId('accountsRetry');
   const more = byId('accountsMore');
+  const dialog = byId('accountDialog');
+  const create = byId('accountCreate');
+  const close = byId('accountClose');
   const form = byId('accountForm');
   const fields = byId('accountFields');
   const title = byId('accountFormTitle');
@@ -42,6 +45,8 @@
   function updateControls() {
     const busy = loading || saving;
     fields.disabled = busy;
+    create.disabled = busy;
+    close.disabled = busy;
     more.disabled = busy;
     retry.disabled = busy;
     rowButtons.forEach((button) => { button.disabled = busy; });
@@ -66,8 +71,14 @@
     passwordHint.textContent = '12–128 个字符。';
     sessionHint.hidden = true;
     save.textContent = '创建账号';
-    cancel.hidden = true;
     clearMessages();
+  }
+
+  function openCreate() {
+    if (loading || saving || !session || session.account.role !== 'admin') return;
+    beginCreate();
+    dialog.showModal();
+    title.focus();
   }
 
   function beginEdit(account) {
@@ -85,8 +96,8 @@
     passwordHint.textContent = '留空则不修改；填写时须为 12–128 个字符。';
     sessionHint.hidden = false;
     save.textContent = '保存修改';
-    cancel.hidden = false;
     clearMessages();
+    dialog.showModal();
     title.focus();
   }
 
@@ -157,7 +168,7 @@
 
   form.addEventListener('submit', async (event) => {
     event.preventDefault();
-    if (saving || loading || !session || session.account.role !== 'admin') return;
+    if (saving || loading || !dialog.open || !session || session.account.role !== 'admin') return;
     clearMessages();
     let request;
     let editingSelf = false;
@@ -183,6 +194,7 @@
     }
     saving = true;
     updateControls();
+    let focusAfterSave = false;
     try {
       await request();
       password.value = '';
@@ -195,16 +207,18 @@
           sessionMessage.textContent = '当前账号的角色已更新，请重新登录。';
           sessionLogin.href = '/login?next=%2Fworkspace';
         }
+        dialog.close();
         workspace.hidden = true;
         sessionEnded.hidden = false;
         sessionEnded.focus();
         return;
       }
       const message = selected ? '账号已更新。' : '账号已创建。';
-      beginCreate();
+      dialog.close();
       saved.textContent = message;
       saved.hidden = false;
       await loadAccounts(true);
+      focusAfterSave = true;
     } catch (failure) {
       if (failure.status === 401) {
         loginAgain();
@@ -215,10 +229,16 @@
     } finally {
       saving = false;
       updateControls();
+      if (focusAfterSave) create.focus();
     }
   });
 
-  cancel.addEventListener('click', () => { beginCreate(); title.focus(); });
+  create.addEventListener('click', openCreate);
+  const dismissDialog = () => { if (!saving) dialog.close(); };
+  cancel.addEventListener('click', dismissDialog);
+  close.addEventListener('click', dismissDialog);
+  dialog.addEventListener('cancel', (event) => { if (saving) event.preventDefault(); });
+  dialog.addEventListener('close', () => { password.value = ''; });
   more.addEventListener('click', () => loadAccounts(false));
   retry.addEventListener('click', () => loadAccounts(retryReset));
 

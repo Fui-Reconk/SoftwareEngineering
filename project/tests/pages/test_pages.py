@@ -113,6 +113,8 @@ def test_admin_account_page_provides_management_form_and_list(app):
     body = response.get_data(as_text=True)
     assert "账号管理" in body
     assert 'id="accountForm"' in body
+    assert re.search(r'<dialog\b[^>]*id="accountDialog"', body)
+    assert 'id="accountCreate"' in body
     assert 'id="accountRows"' in body
     assert 'js/pages/accounts.js' in body
 

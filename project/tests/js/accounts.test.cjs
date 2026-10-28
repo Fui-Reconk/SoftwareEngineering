@@ -10,7 +10,7 @@ const tick = () => new Promise(setImmediate);
 function node() {
   let text = '';
   return {
-    children: [], events: {}, attributes: {}, hidden: false, disabled: false, value: '',
+    children: [], events: {}, attributes: {}, hidden: false, disabled: false, open: false, value: '',
     get textContent() { return text; },
     set textContent(value) { text = value; this.children = []; },
     append(...children) { this.children.push(...children); },
@@ -18,10 +18,12 @@ function node() {
     addEventListener(name, handler) { this.events[name] = handler; },
     setAttribute(name, value) { this.attributes[name] = value; },
     focus() { this.focused = true; },
+    showModal() { this.open = true; },
+    close() { if (this.open) { this.open = false; this.events.close?.(); } },
   };
 }
 
-async function render({ role = 'admin', accounts, patchFailure = null, getFailures = [] } = {}) {
+async function render({ role = 'admin', accounts, patchFailure = null, getFailures = [], postWait = null } = {}) {
   assert.ok(existsSync(scriptPath), 'account management page script is missing');
   let data = (accounts || [
     { user_id: 'self', username: 'admin', role: 'admin', is_active: true },
@@ -48,6 +50,7 @@ async function render({ role = 'admin', accounts, patchFailure = null, getFailur
     },
     async post(route, body) {
       requests.push({ method: 'POST', route, body: JSON.parse(JSON.stringify(body)) });
+      if (postWait) await postWait;
       const account = { user_id: 'created', username: body.username, role: body.role, is_active: true };
       data.push(account);
       return { account };
@@ -82,6 +85,7 @@ function editButton(view, index) {
 
 test('admin can create an account with the fields required by the real API', async () => {
   const view = await render();
+  await view.click('accountCreate');
   view.elements.get('accountUsername').value = 'new_teacher';
   view.elements.get('accountRole').value = 'teacher';
   view.elements.get('accountPassword').value = 'Long-password-2026!';
@@ -94,11 +98,13 @@ test('admin can create an account with the fields required by the real API', asy
   assert.equal(view.elements.get('accountPassword').value, '');
   assert.equal(view.elements.get('accountRows').children.length, 3);
   assert.equal(view.elements.get('accountSaved').hidden, false);
+  assert.equal(view.elements.get('accountDialog').open, false);
 });
 
 test('editing another account sends only changed role, status and password', async () => {
   const view = await render();
   editButton(view, 1).events.click();
+  assert.equal(view.elements.get('accountDialog').open, true);
   view.elements.get('accountRole').value = 'auditor';
   view.elements.get('accountStatus').value = 'false';
   view.elements.get('accountPassword').value = 'Reset-password-2026!';
@@ -137,6 +143,7 @@ test('backend conflicts remain visible and leave the edit form available', async
   assert.match(view.elements.get('accountFormError').textContent, /先转移/);
   assert.equal(view.elements.get('accountFormError').hidden, false);
   assert.equal(view.elements.get('accountFields').disabled, false);
+  assert.equal(view.elements.get('accountDialog').open, true);
 });
 
 test('non-admin roles cannot load or use account management', async () => {
@@ -210,4 +217,63 @@ test('changing the current admin role returns to the workspace after login', asy
   await view.submit();
   assert.match(view.elements.get('accountSessionMessage')?.textContent || '', /角色.*重新登录/);
   assert.equal(view.elements.get('accountSessionLogin')?.href, '/login?next=%2Fworkspace');
+});
+
+
+test('create opens a fresh dialog and cancel clears sensitive input', async () => {
+  const view = await render();
+  assert.equal(view.elements.get('accountDialog').open, false);
+  await view.click('accountCreate');
+  assert.equal(view.elements.get('accountDialog').open, true);
+  assert.equal(view.elements.get('accountFormTitle').textContent, '新建账号');
+  view.elements.get('accountUsername').value = 'draft';
+  view.elements.get('accountPassword').value = 'Draft-password-2026!';
+  await view.click('accountCancel');
+  assert.equal(view.elements.get('accountDialog').open, false);
+  assert.equal(view.elements.get('accountPassword').value, '');
+  await view.click('accountCreate');
+  assert.equal(view.elements.get('accountUsername').value, '');
+  assert.equal(view.elements.get('accountPassword').value, '');
+});
+
+test('editing opens a populated dialog and close returns to the list', async () => {
+  const view = await render();
+  editButton(view, 1).events.click();
+  assert.equal(view.elements.get('accountDialog').open, true);
+  assert.equal(view.elements.get('accountUsername').value, 'teacher');
+  assert.equal(view.elements.get('accountFormTitle').textContent, '编辑账号');
+  await view.click('accountClose');
+  assert.equal(view.elements.get('accountDialog').open, false);
+  assert.equal(view.requests.some(request => request.method === 'PATCH'), false);
+});
+
+test('Escape can close the dialog and clears the password', async () => {
+  const view = await render();
+  await view.click('accountCreate');
+  view.elements.get('accountPassword').value = 'Draft-password-2026!';
+  let prevented = false;
+  view.elements.get('accountDialog').events.cancel({ preventDefault() { prevented = true; } });
+  if (!prevented) view.elements.get('accountDialog').close();
+  assert.equal(prevented, false);
+  assert.equal(view.elements.get('accountDialog').open, false);
+  assert.equal(view.elements.get('accountPassword').value, '');
+});
+
+test('a pending save prevents closing the dialog until the request settles', async () => {
+  let release;
+  const postWait = new Promise(resolve => { release = resolve; });
+  const view = await render({ postWait });
+  await view.click('accountCreate');
+  view.elements.get('accountUsername').value = 'new_teacher';
+  view.elements.get('accountPassword').value = 'Long-password-2026!';
+  const pending = view.submit();
+  await tick();
+  let prevented = false;
+  view.elements.get('accountDialog').events.cancel({ preventDefault() { prevented = true; } });
+  assert.equal(prevented, true);
+  assert.equal(view.elements.get('accountClose').disabled, true);
+  assert.equal(view.elements.get('accountDialog').open, true);
+  release();
+  await pending;
+  assert.equal(view.elements.get('accountDialog').open, false);
 });

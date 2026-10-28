@@ -20,9 +20,13 @@
 <div class="accounts-layout" id="accountWorkspace" hidden>
   <section class="accounts-list" aria-labelledby="accountsListTitle">
     <header class="accounts-section-head">
-      <h2 id="accountsListTitle">账号列表</h2>
-      <p class="caption">选择账号可修改角色、状态或重置密码。</p>
+      <div>
+        <h2 id="accountsListTitle">账号列表</h2>
+        <p class="caption">选择账号可修改角色、状态或重置密码。</p>
+      </div>
+      <button class="btn primary accounts-create" type="button" id="accountCreate">新建账号</button>
     </header>
+    <p class="accounts-saved" id="accountSaved" role="status" hidden></p>
     <div class="accounts-table-wrap">
       <table class="accounts-table">
         <thead>
@@ -40,8 +44,11 @@
     </div>
   </section>
 
-  <section class="accounts-editor" aria-labelledby="accountFormTitle">
-    <h2 id="accountFormTitle" tabindex="-1">新建账号</h2>
+  <dialog class="accounts-dialog" id="accountDialog" aria-labelledby="accountFormTitle">
+    <div class="accounts-dialog-head">
+      <h2 id="accountFormTitle" tabindex="-1">新建账号</h2>
+      <button class="btn ghost accounts-dialog-close" type="button" id="accountClose" aria-label="关闭弹窗">关闭</button>
+    </div>
     <form class="accounts-form" id="accountForm">
       <fieldset id="accountFields">
         <label class="field">
@@ -73,14 +80,13 @@
         </label>
         <p class="caption" id="accountSessionHint" hidden>保存修改后，该账号需要重新登录。</p>
         <p class="form-error" id="accountFormError" role="alert" hidden></p>
-        <p class="accounts-saved" id="accountSaved" role="status" hidden></p>
         <div class="accounts-form-actions">
           <button class="btn primary" id="accountSave" type="submit">创建账号</button>
-          <button class="btn" id="accountCancel" type="button" hidden>取消编辑</button>
+          <button class="btn" id="accountCancel" type="button">取消</button>
         </div>
       </fieldset>
     </form>
-  </section>
+  </dialog>
 </div>
 {% endblock %}
 

@@ -17,7 +17,7 @@ function loginPage(username, secret, fetch, search = '') {
   const csrf = { content: '' };
   const entryControl = () => ({ hidden: true, disabled: false, addEventListener() {} });
   const entryElements = { entryTitle: { textContent: '' }, entryNote: error,
-    entryRetry: entryControl(), entryLogout: entryControl() };
+    entryRetry: entryControl(), entryLogout: entryControl(), entryPassword: entryControl() };
   const form = {
     username: { value: username }, password: { value: secret },
     querySelector() { return button; },

@@ -22,6 +22,11 @@ def login():
     return render_template("auth/login.html")
 
 
+@pages.get("/account/password")
+def account_password():
+    return render_template("auth/password.html", shell="staff")
+
+
 @pages.get("/teacher/<course_id>")
 def teacher_board(course_id: str):
     return render_template("teacher/board.html", shell="staff", course_id=course_id)

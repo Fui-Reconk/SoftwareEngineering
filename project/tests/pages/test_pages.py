@@ -127,8 +127,9 @@ def test_audit_page_is_read_only(app):
     assert "查询留痕" in body
     assert "操作者" in body
     assert "消耗 ε" in body
-    # 检查操作入口，而不是依赖页面中的说明文案。
-    assert not re.search(r"<(?:button|a)\b[^>]*>\s*(?:编辑|修改|删除)", body)
+    # 工作区账号区允许用户修改自己的密码；审计正文仍不可编辑。
+    audit_content = body.split('<main class="sheet"', 1)[1].split('</main>', 1)[0]
+    assert not re.search(r"<(?:button|a)\b[^>]*>\s*(?:编辑|修改|删除)", audit_content)
 
 
 def test_admin_course_page_provides_list_and_teacher_assignment(app):
@@ -158,3 +159,16 @@ def test_snapshot_export_page_does_not_shadow_course_named_exports(app):
         assert f'id="{control}"' in body
     assert "js/pages/exports.js" in body
     assert 'id="board"' in client.get("/teacher/exports").get_data(as_text=True)
+
+
+def test_staff_password_page_and_workspace_link(app):
+    client = app.test_client()
+    response = client.get("/account/password")
+    assert response.status_code == 200
+    body = response.get_data(as_text=True)
+    assert 'id="passwordForm"' in body
+    assert 'id="currentPassword"' in body
+    assert 'id="newPassword"' in body
+    assert 'id="confirmPassword"' in body
+    assert 'href="/account/password"' in client.get("/workspace").get_data(as_text=True)
+    assert 'href="/account/password"' in client.get("/admin/courses").get_data(as_text=True)

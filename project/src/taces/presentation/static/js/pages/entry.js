@@ -6,6 +6,7 @@
   const note = document.getElementById('entryNote');
   const retry = document.getElementById('entryRetry');
   const logout = document.getElementById('entryLogout');
+  const passwordLink = document.getElementById('entryPassword');
   const csrf = document.querySelector('meta[name="csrf-token"]');
   let busy = false;
 
@@ -21,6 +22,7 @@
       const session = await window.API.get('/api/auth/me');
       csrf.content = session.csrf_token || '';
       logout.hidden = false;
+      passwordLink.hidden = false;
       const role = session.account.role;
       if (role === 'admin') {
         window.location.replace('/admin/config');

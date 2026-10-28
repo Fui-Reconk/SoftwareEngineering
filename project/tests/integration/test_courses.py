@@ -84,6 +84,27 @@ def test_course_can_transfer_owner_and_close_window(staff):
     assert staff["client"].post("/api/admin/courses/c1/evaluation-codes", json={"count": 1}, headers=staff["headers"]).status_code == 409
 
 
+def test_reassigned_course_moves_between_teacher_workspaces(staff):
+    course = create_course(staff)
+    other = staff["auth"].create_account(staff["token"], "second_teacher", "Other-password-2026!", "teacher")
+    other_token, _ = staff["auth"].login("second_teacher", "Other-password-2026!")
+    previous, _ = login_role(staff)
+    current = staff["app"].test_client()
+    current.set_cookie("taces_session", other_token, path="/api")
+    assert previous.get("/api/courses").json["data"]["courses"] == [course]
+    assert current.get("/api/courses").json["data"]["courses"] == []
+
+    response = staff["client"].patch("/api/admin/courses/c1", headers=staff["headers"],
+                                     json={"teacher_id": other["user_id"]})
+    assert response.status_code == 200
+    assert previous.get("/api/courses").json["data"]["courses"] == []
+    assert current.get("/api/courses").json["data"]["courses"] == [
+        {**course, "teacher_id": other["user_id"]}
+    ]
+    assert previous.get("/api/courses/c1").status_code == 403
+    assert current.get("/api/courses/c1").status_code == 200
+
+
 def test_course_audit_failure_rolls_back_every_write(staff, monkeypatch):
     import taces.business.courses.service as module
     def fail(*args, **kwargs):

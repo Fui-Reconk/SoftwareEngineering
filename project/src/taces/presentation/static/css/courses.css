@@ -1,0 +1,8 @@
+/* 课程管理与账号管理共用表格和弹窗控件。 */
+.course-name, .course-identifier { display: block; }
+.course-identifier { margin-top: 4px; color: var(--muted); font-size: var(--fs-small); }
+.courses-account-link { margin-top: -10px; justify-self: start; }
+@media (max-width: 480px) {
+  .courses-table th:first-child, .courses-table td:first-child { width: 35%; }
+  .courses-table th:nth-child(2), .courses-table th:nth-child(3) { width: 22%; }
+}

@@ -43,6 +43,11 @@ def admin_accounts():
     return render_template("admin/accounts.html", shell="staff")
 
 
+@pages.get("/admin/courses")
+def admin_courses():
+    return render_template("admin/courses.html", shell="staff")
+
+
 @pages.get("/admin/config")
 def admin_config():
     return render_template("admin/config.html", shell="staff")

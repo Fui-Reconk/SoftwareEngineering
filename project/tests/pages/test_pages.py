@@ -53,6 +53,9 @@ def test_staff_workspace_still_hands_off_to_the_browser(app):
     body = response.get_data(as_text=True)
     assert "正在进入" in body
     assert "js/pages/entry.js" in body
+    assert 'id="entryRetry"' in body
+    assert 'id="entryLogout"' in body
+    assert "page-workspace" in body
 
 
 def test_login_page_links_back_to_student_entry(app):
@@ -126,3 +129,14 @@ def test_audit_page_is_read_only(app):
     assert "消耗 ε" in body
     # 检查操作入口，而不是依赖页面中的说明文案。
     assert not re.search(r"<(?:button|a)\b[^>]*>\s*(?:编辑|修改|删除)", body)
+
+
+def test_admin_course_page_provides_list_and_teacher_assignment(app):
+    response = app.test_client().get("/admin/courses")
+    assert response.status_code == 200
+    body = response.get_data(as_text=True)
+    assert "课程管理" in body
+    assert 'id="courseRows"' in body
+    assert 'id="courseTeacher"' in body
+    assert re.search(r'<dialog\b[^>]*id="courseDialog"', body)
+    assert 'js/pages/courses.js' in body

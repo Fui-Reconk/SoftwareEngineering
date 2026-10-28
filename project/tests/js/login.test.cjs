@@ -14,6 +14,10 @@ function loginPage(username, secret, fetch, search = '') {
   let destination;
   const button = { disabled: false };
   const error = { hidden: true, textContent: '' };
+  const csrf = { content: '' };
+  const entryControl = () => ({ hidden: true, disabled: false, addEventListener() {} });
+  const entryElements = { entryTitle: { textContent: '' }, entryNote: error,
+    entryRetry: entryControl(), entryLogout: entryControl() };
   const form = {
     username: { value: username }, password: { value: secret },
     querySelector() { return button; },
@@ -22,9 +26,9 @@ function loginPage(username, secret, fetch, search = '') {
   const context = vm.createContext({
     fetch, setTimeout, URLSearchParams,
     document: {
-      querySelector() { return null; },
+      querySelector() { return csrf; },
       getElementById(id) {
-        return { loginForm: form, loginError: error, entryNote: error }[id];
+        return { loginForm: form, loginError: error, ...entryElements }[id];
       },
     },
     window: {
@@ -76,7 +80,10 @@ test('login respects a safe next destination and rejects a protocol-relative one
 test('an expired workspace session returns to login with the workspace as next', async () => {
   let destination;
   const context = vm.createContext({
-    document: { getElementById: () => ({ textContent: '' }) },
+    document: {
+      getElementById: () => ({ textContent: '', addEventListener() {} }),
+      querySelector: () => ({ content: '' }),
+    },
     window: {
       API: { get: async () => { throw { status: 401 }; } },
       location: { replace: (value) => { destination = value; } },

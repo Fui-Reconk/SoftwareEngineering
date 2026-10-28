@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+
+{% block title %}课程管理 · TACES{% endblock %}
+{% block styles %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/accounts.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/courses.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="title-row">
+  <div>
+    <h1>课程管理</h1>
+    <p class="sub">创建课程，分配或调整任课教师。</p>
+  </div>
+</div>
+
+<p class="form-error accounts-message" id="courseDenied" role="alert" hidden>当前账号没有管理权限。</p>
+<div id="courseWorkspace" hidden>
+  <section class="accounts-list" aria-labelledby="coursesListTitle">
+    <header class="accounts-section-head">
+      <div>
+        <h2 id="coursesListTitle">课程列表</h2>
+        <p class="caption">教师登录后可查看分配给自己的课程。</p>
+      </div>
+      <button class="btn primary accounts-create" type="button" id="courseCreate" disabled>新建课程</button>
+    </header>
+    <p class="accounts-saved" id="courseSaved" role="status" hidden></p>
+    <div class="accounts-table-wrap">
+      <table class="accounts-table courses-table">
+        <thead>
+          <tr><th scope="col">课程</th><th scope="col">学期</th><th scope="col">任课教师</th><th scope="col">操作</th></tr>
+        </thead>
+        <tbody id="courseRows"></tbody>
+      </table>
+    </div>
+    <p class="accounts-list-note" id="coursesEmpty" hidden>还没有课程，点击“新建课程”开始分配。</p>
+    <p class="accounts-list-note" id="coursesLoading" role="status" hidden>正在加载课程和教师…</p>
+    <p class="form-error accounts-list-note" id="coursesError" role="alert" hidden></p>
+    <div class="accounts-list-actions">
+      <button class="btn" type="button" id="coursesRetry" hidden>重试</button>
+    </div>
+  </section>
+
+  <dialog class="accounts-dialog" id="courseDialog" aria-labelledby="courseDialogTitle">
+    <div class="accounts-dialog-head">
+      <h2 id="courseDialogTitle" tabindex="-1">新建课程</h2>
+      <button class="btn ghost accounts-dialog-close" type="button" id="courseClose" aria-label="关闭弹窗">关闭</button>
+    </div>
+    <form class="accounts-form" id="courseForm">
+      <fieldset id="courseFields">
+        <label class="field">
+          <span class="field-label">课程标识</span>
+          <input class="input" id="courseId" type="text" autocomplete="off" autocapitalize="none"
+                 spellcheck="false" maxlength="64" pattern="[A-Za-z0-9_.-]{1,64}" required>
+          <span class="caption">1–64 位字母、数字、点、下划线或短横线，创建后不可修改。</span>
+        </label>
+        <label class="field">
+          <span class="field-label">课程名称</span>
+          <input class="input" id="courseName" type="text" maxlength="200" required>
+        </label>
+        <label class="field">
+          <span class="field-label">学期</span>
+          <input class="input" id="courseTerm" type="text" maxlength="100" placeholder="例如：2026 秋季" required>
+        </label>
+        <label class="field">
+          <span class="field-label">任课教师</span>
+          <select class="input" id="courseTeacher" required></select>
+        </label>
+        <p class="caption" id="courseTeacherHint" role="status" hidden></p>
+        <a class="accounts-login courses-account-link" id="courseTeacherLink" href="{{ url_for('pages.admin_accounts') }}" hidden>前往账号管理</a>
+        <p class="caption" id="courseDefaultHint">新建课程默认开放评价 7 天，使用三个默认评价维度。</p>
+        <p class="form-error" id="courseFormError" role="alert" hidden></p>
+        <div class="accounts-form-actions">
+          <button class="btn primary" id="courseSave" type="submit">创建课程</button>
+          <button class="btn" id="courseCancel" type="button">取消</button>
+        </div>
+      </fieldset>
+    </form>
+  </dialog>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/pages/courses.js') }}"></script>
+{% endblock %}

@@ -1,11 +1,24 @@
 {% extends "base.html" %}
 
-{% block title %}正在进入 · TACES{% endblock %}
-
-{% block content %}
-<h1 class="entry-note" id="entryNote">正在进入</h1>
+{% block title %}进入工作区 · TACES{% endblock %}
+{% block body_class %} page-workspace{% endblock %}
+{% block styles %}
+<meta name="csrf-token" content="">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/workspace.css') }}">
 {% endblock %}
 
+{% block content %}
+<section class="workspace-card" aria-labelledby="entryTitle">
+  <h1 id="entryTitle">正在进入工作区</h1>
+  <p id="entryNote" role="status">正在确认账号信息，请稍候。</p>
+  <div class="workspace-actions">
+    <button class="btn primary" type="button" id="entryRetry" hidden>重新检查</button>
+    <button class="btn" type="button" id="entryLogout" hidden>退出登录</button>
+  </div>
+</section>
+{% endblock %}
+
+{% block page_footer %}{% include "_page_footer.html" %}{% endblock %}
 {% block scripts %}
 <script src="{{ url_for('static', filename='js/pages/entry.js') }}"></script>
 {% endblock %}

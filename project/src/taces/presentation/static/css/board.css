@@ -1,4 +1,10 @@
 /* 当前结果和按编号导出历史快照共用看板布局。 */
+.board .title-row > div:first-child { flex: 1 1 200px; min-width: 0; }
+.board #courseTitle, .board #courseSub { overflow-wrap: anywhere; }
+.board .title-actions { flex: 0 1 auto; min-width: 0; flex-wrap: wrap; justify-content: flex-end; }
+.board-refresh-info { margin: -8px 0 18px; }
+.board-refresh-info .caption { color: var(--muted); line-height: 1.6; }
+.board-refresh-info #refreshStatus, .board-refresh-info #refreshError { margin-top: 6px; }
 .history-export { margin: 0 0 20px; }
 .history-export summary { cursor: pointer; color: #00635f; font-weight: 500; }
 .history-export .caption { margin-top: 8px; }
@@ -17,3 +23,7 @@
 #exportPageError { margin-top: 16px; }
 #exportRetry { margin-top: 12px; }
 @media (max-width: 480px) { .export-page { padding: 18px; } }
+@media (max-width: 700px) {
+  .board .title-actions { flex: 1 1 100%; justify-content: flex-start; }
+  .board .title-actions .btn { min-height: 44px; }
+}

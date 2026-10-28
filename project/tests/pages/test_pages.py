@@ -153,6 +153,10 @@ def test_board_offers_both_snapshot_export_formats(app):
     assert 'id="exportPdf"' in body
     assert 'id="exportCsv"' in body
     assert 'id="exportError"' in body
+    assert 'id="refreshResults"' in body
+    assert 'id="refreshStatus"' in body
+    assert '尚无发布结果' in body
+    assert '若尚无结果则暂不出数' in body
 
 
 def test_staff_password_page_and_workspace_link(app):

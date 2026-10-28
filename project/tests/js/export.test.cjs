@@ -16,9 +16,9 @@ const published = { state: 'published', publicationId: publication, courseCode: 
   openText: { responses: 0, terms: [] }, publishedAt: '2026-10-28T10:00:00+08:00' };
 
 async function page(data = published, failure = null) {
-  const elements = new Map(), requests = [], downloads = [], revoked = [];
+  const elements = new Map(), requests = [], downloads = [], revoked = [], redirects = [];
   function node() { return { textContent: '', hidden: true, disabled: true, events: {},
-    children: [], style: {}, classList: { add() {} },
+    children: [], style: {}, classList: { add() {}, remove() {} },
     addEventListener(name, fn) { this.events[name] = fn; },
     append(...children) { this.children.push(...children); },
     appendChild(child) { this.children.push(child); },
@@ -30,7 +30,8 @@ async function page(data = published, failure = null) {
   const context = vm.createContext({
     document: { getElementById: element, createElement: node, body: { appendChild() {} } },
     URLSearchParams,
-    window: { SHELL: { ready: Promise.resolve() }, location: { replace() {} },
+    window: { SHELL: { ready: Promise.resolve({ account: { role: 'teacher' } }) },
+      location: { pathname: '/teacher/CS-1', replace(url) { redirects.push(url); } },
       API: { get: async () => data, downloadWithMetadata: async route => {
         requests.push(route); if (failure) throw failure;
         return { blob: { file: true }, filename: `课程_秋_teacher.${route.includes('format=pdf') ? 'pdf' : 'csv'}` };
@@ -42,7 +43,7 @@ async function page(data = published, failure = null) {
   });
   vm.runInContext(boardSource, context);
   await tick();
-  return { elements, requests, downloads, revoked,
+  return { elements, requests, downloads, revoked, redirects,
     async click(id) { assert.equal(typeof element(id).events.click, 'function', `${id} must have a click handler`); await element(id).events.click(); await tick(); } };
 }
 
@@ -60,6 +61,17 @@ test('published snapshots download the exact displayed publication in both forma
   assert.equal(view.revoked.length, 2);
 });
 
+test('export after an update requests the newly displayed publication', async () => {
+  const data = { ...published };
+  const view = await page(data);
+  const next = 'b'.repeat(32);
+  data.publicationId = next;
+  data.charged = true;
+  await view.click('refreshResults');
+  await view.click('exportPdf');
+  assert.equal(view.requests[0], `/api/courses/CS-1/export?format=pdf&publication=${next}`);
+});
+
 test('unpublished results do not permit exports', async () => {
   const view = await page({ state: 'unpublished', reason: 'below_threshold', sample: 2, threshold: 5, shortfall: 3 });
   assert.equal(view.elements.get('exportPdf').disabled, true);
@@ -73,6 +85,34 @@ test('download errors remain visible on the board', async () => {
   assert.match(view.elements.get('exportError').textContent, /导出服务暂不可用/);
   assert.equal(view.elements.get('exportError').hidden, false);
   assert.equal(view.downloads.length, 0);
+});
+
+test('an expired session during export hides results and disables further actions', async () => {
+  const view = await page(published, { status: 401 });
+  await view.click('exportCsv');
+  assert.deepEqual(view.redirects, ['/login?next=%2Fteacher%2FCS-1']);
+  assert.equal(view.elements.get('published').hidden, true);
+  assert.equal(view.elements.get('exportCsv').disabled, true);
+  assert.equal(view.elements.get('refreshResults').disabled, true);
+});
+
+test('lost course access during export hides results but allows a later retry', async () => {
+  const view = await page(published, { status: 403, message: '无权导出' });
+  await view.click('exportCsv');
+  assert.equal(view.elements.get('published').hidden, true);
+  assert.equal(view.elements.get('exportCsv').disabled, true);
+  assert.equal(view.elements.get('refreshResults').disabled, false);
+  assert.match(view.elements.get('exportError').textContent, /无权/);
+  assert.equal(view.elements.get('exportError').hidden, false);
+});
+
+test('a missing historical publication leaves the current snapshot available', async () => {
+  const view = await page(published, { status: 404, message: '发布快照不存在' });
+  view.elements.get('historyId').value = 'a'.repeat(32);
+  await view.click('historyCsv');
+  assert.equal(view.elements.get('published').hidden, false);
+  assert.equal(view.elements.get('exportCsv').disabled, false);
+  assert.match(view.elements.get('exportError').textContent, /不存在/);
 });
 
 test('the shared binary download includes the session and preserves backend errors', async () => {

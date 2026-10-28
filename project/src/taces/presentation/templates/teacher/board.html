@@ -12,9 +12,16 @@
     </div>
     <div class="title-actions">
       <span class="stamp-box" id="publishState" hidden></span>
+      <button class="btn" type="button" id="refreshResults" disabled>更新结果</button>
       <button class="btn" type="button" id="exportPdf" disabled>导出 PDF</button>
       <button class="btn" type="button" id="exportCsv" disabled>导出 CSV</button>
     </div>
+  </div>
+
+  <div class="board-refresh-info">
+    <p class="caption">打开看板或点击更新时，若尚无发布结果，或评价数据、发布参数（每次发布 ε、出数门槛）有变化，满足条件后会发布新结果并消耗预算；未产生新结果时保留已发布结果，若尚无结果则暂不出数。</p>
+    <p class="caption" id="refreshStatus" role="status" hidden></p>
+    <p class="form-error" id="refreshError" role="alert" hidden></p>
   </div>
 
   <details class="history-export" id="historyExport" hidden>

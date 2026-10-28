@@ -22,6 +22,7 @@
 
   const PUBLISHED = {
     state: 'published',
+    publicationId: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
     courseCode: 'SE201-03',
     courseTitle: '数据结构',
     teacherName: '李砚秋',

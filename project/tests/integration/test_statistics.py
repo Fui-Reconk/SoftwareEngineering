@@ -90,6 +90,24 @@ def test_policy_revision_creates_new_publication(staff):
     assert publication_counts(staff)[:2] == (2, 300000)
 
 
+def test_raised_threshold_reuses_last_snapshot_until_new_data_meets_it(staff):
+    create_course(staff)
+    seed_responses(staff)
+    client, _ = login_role(staff)
+    first = client.get('/api/courses/c1/statistics').json['data']
+    with staff['db'].transaction() as con:
+        con.execute('UPDATE main.privacy_policy SET threshold=6,revision=revision+1')
+    blocked = client.get('/api/courses/c1/statistics').json['data']
+    assert blocked['publicationId'] == first['publicationId'] and blocked['charged'] is False
+    assert blocked['budgetExhausted'] is False
+    assert publication_counts(staff)[:2] == (1, 100000)
+    seed_responses(staff, 1)
+    updated = client.get('/api/courses/c1/statistics').json['data']
+    assert updated['publicationId'] != first['publicationId'] and updated['charged'] is True
+    assert updated['responses'] == 6
+    assert publication_counts(staff)[:2] == (2, 200000)
+
+
 def test_exhausted_legacy_budget_without_snapshot_does_not_fabricate_results(staff):
     create_course(staff)
     seed_responses(staff)

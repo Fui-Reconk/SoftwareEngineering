@@ -12,7 +12,7 @@ async function render(data) {
   const charts = [];
   function node() {
     return { textContent: '', hidden: true, children: [],
-      className: '', classList: { add() {} }, style: {},
+      className: '', classList: { add() {}, remove() {} }, style: {},
       addEventListener() {},
       append(...children) { this.children.push(...children); },
       appendChild(child) { this.children.push(child); } };
@@ -25,7 +25,7 @@ async function render(data) {
   const context = vm.createContext({
     document: { getElementById: element, createElement: node },
     window: {
-      SHELL: { ready: Promise.resolve() },
+      SHELL: { ready: Promise.resolve({ account: { role: 'teacher' } }) },
       API: { get: async () => data },
       Charts: {
         fmt: { int: String, dec: (places) => (value) => Number(value).toFixed(places),
@@ -58,6 +58,7 @@ test('the below-threshold refusal still explains the missing sample count', asyn
 
 test('the real histogram counts complete evaluations instead of individual dimension rows', async () => {
   const { elements, charts } = await render({ state: 'published', courseCode: 'synthetic',
+    publicationId: 'a'.repeat(32),
     courseTitle: 'Synthetic', term: 'test', responses: 6, enrolled: 8,
     pooledMean: 3, interval: 4, spread: 0, distinguishable: false,
     dimensions: [{ name: 'A', value: 3 }, { name: 'B', value: 3 }, { name: 'C', value: 3 }],

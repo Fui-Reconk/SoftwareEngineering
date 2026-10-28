@@ -1,10 +1,10 @@
 # TACES 前端实现说明
 
-更新日期：2026-10-27。本文描述当前已合入主分支的 Flask 页面；字段定义见 [API_CONTRACT.md](API_CONTRACT.md)。
+更新日期：2026-10-28。本文描述当前已合入主分支的 Flask 页面；字段定义见 [API_CONTRACT.md](API_CONTRACT.md)。
 
 ## 当前状态
 
-登录、教师看板、学生验码、学生评分、管理员隐私配置、审计日志六个功能页面及入口页均已实现。Flask 已启用模板与静态资源，页面路由位于 `src/taces/presentation/routes/pages.py`（以下源码路径均以 `project/` 为基准）。
+登录、教师看板、学生验码、学生评分、管理员账号管理、管理员隐私配置、审计日志七个功能页面及入口页均已实现。Flask 已启用模板与静态资源，页面路由位于 `src/taces/presentation/routes/pages.py`（以下源码路径均以 `project/` 为基准）。
 
 **当前 `static/js/api.js` 中的 `USE_MOCK=false`。** 页面默认读取真实API，数据生成器安装的账号可直接登录。Mock文件仅用于手动启用的静态调试，不能将其中的模拟口令用于真实账号。真实登录、Cookie会话与四个启用演示账号的角色跳转已增加回归；其他页面边缘交互继续按实际验证记录验收。
 
@@ -19,6 +19,7 @@
 | 教师看板 | `/teacher/<course_id>` | teacher/board.html + pages/board.js |
 | 学生验码 | `/`、`/student` | student/code.html + pages/code.js，主按钮下提供教职工登录入口 |
 | 学生评分 | `/student/evaluate` | student/evaluate.html + pages/evaluate.js，提交成功后可手动返回首页，或等待5秒自动返回 |
+| 账号管理 | `/admin/accounts` | admin/accounts.html + pages/accounts.js，管理员创建和维护员工账号 |
 | 隐私配置 | `/admin/config` | admin/config.html + pages/config.js |
 | 审计日志 | `/admin/audit` | admin/audit.html + pages/audit.js |
 
@@ -28,10 +29,10 @@
 
 - Jinja 提供标题、固定文案与内容槽位；页面JS填充数据和绘制图表。不引入前端框架或构建工具。
 - 公共token位于 `static/css/app.css` 的 `:root`，纸色 `#edf1ee`、数据色 `#059490`；登录和学生页面背景为 `#00707c`。字体优先本机 Noto Sans SC，并配置系统字体回退。
-- 登录和学生验码页在宽屏使用表单与评教图形双栏，手机使用单列表单；学生评分页保持单列，教师、配置、审计使用侧栏壳。登录和学生页面底部显示 TACES 版权标识。
+- 登录和学生验码页在宽屏使用表单与评教图形双栏，手机使用单列表单；学生评分页保持单列，教师、账号管理、配置、审计使用侧栏壳。登录和学生页面底部显示 TACES 版权标识。
 - 页面统一通过 `window.API` 取数。`api.js` 的Mock分支与fetch分支返回接口的data部分，错误转换为APIError。
 - fetch分支携带同源Cookie与 `X-TACES-Request: 1`；员工写请求有CSRF值时发送 `X-CSRF-Token`。学生凭评价码提交，不要求员工会话或CSRF。
-- 管理员导航为“隐私参数 / 查询留痕”，可随时返回配置；审计员只显示“查询留痕”。这两种角色的侧栏不请求课程列表，也不显示教师结果入口。教师侧栏请求并显示本人课程，空列表与加载失败分别提示。审计筛选项直接由 `/api/admin/audit` 返回。
+- 管理员导航为“账号管理 / 隐私参数 / 查询留痕”，可随时返回配置；审计员只显示“查询留痕”。这两种角色的侧栏不请求课程列表，也不显示教师结果入口。教师侧栏请求并显示本人课程，空列表与加载失败分别提示。审计筛选项直接由 `/api/admin/audit` 返回。
 - 侧栏沿用登录页的青绿色系，底部账号和退出位于浅色区域。品牌、可滚动中部、账号退出分为三行，只有中部导航滚动。宽屏侧栏常驻；860px及以下通过顶部菜单打开抽屉，关闭时隐藏内部焦点项，打开状态切回宽屏会清除遮罩。
 - `project/demo/` 是正式页面实现前的独立静态原型，只在本地保留，正式运行与验收均不依赖该目录。历史实施计划也只本地保存。
 
@@ -45,6 +46,8 @@
 
 学生评价码经POST校验，不放URL。评分页从前端会话状态取课程与评价码，无该状态则返回验码页。所有维度选满后才允许提交，开放题最多500字符；成功后显示回执，已用码或过期码返回入口处理。
 
+账号管理页支持分页查看、新建、启停、角色修改及密码重置；修改后目标账号需要重新登录。后端会阻止停用或降权最后一个启用的管理员，以及直接更改仍有关联课程的教师角色。
+
 隐私配置页从接口读取values/ranges/units，提交顶层epsilon/k/epsilonTotal。ε与k是全局策略，epsilonTotal是每门课预算上限。审计页只读，提供时间/课程过滤与分页，不提供编辑或删除。
 
 ## 运行与验证
@@ -54,9 +57,9 @@
 ```bash
 python run.py
 python -m pytest -q tests/pages tests/system/test_entrypoint.py
-node --test tests/js/board.test.cjs tests/js/config.test.cjs tests/js/evaluate.test.cjs tests/js/login.test.cjs tests/js/shell.test.cjs
+node --test tests/js/board.test.cjs tests/js/config.test.cjs tests/js/evaluate.test.cjs tests/js/login.test.cjs tests/js/shell.test.cjs tests/js/accounts.test.cjs
 ```
 
-页面测试检查路由、模板骨架与关键控件；Node回归执行真实配置页JS，并分别用真实后端与Mock验证请求保存回读。登录回归另外执行实际api.js、login.js和entry.js，对接临时库的真实HTTP服务，检查启用账号、错误密码、旧Mock口令及停用账号。学生评分回归检查提交成功后5秒返回，以及普通失败和失效码处理。shell回归覆盖三角色导航、当前页标记、空课程、失败/过期会话及移动抽屉切回桌面。侧栏已在1440/768/390宽度、长课程列表与390×320短屏上测量头尾固定和中部独立滚动；这不等同于全部页面的全面视觉验收。
+页面测试检查路由、模板骨架与关键控件；Node回归执行真实配置页JS，并分别用真实后端与Mock验证请求保存回读。登录回归另外执行实际api.js、login.js和entry.js，对接临时库的真实HTTP服务，检查启用账号、错误密码、旧Mock口令及停用账号。账号管理JS回归覆盖创建、编辑、本人变更后的重新登录提示、分页和错误重试；后端鉴权集成测试另验证会话撤销。学生评分回归检查提交成功后5秒返回，以及普通失败和失效码处理。shell回归覆盖三角色导航、当前页标记、空课程、失败/过期会话及移动抽屉切回桌面。侧栏已在1440/768/390宽度、长课程列表与390×320短屏上测量头尾固定和中部独立滚动；这不等同于全部页面的全面视觉验收。
 
 已通过真实浏览器验证生成数据副本上的教师、管理员与审计员登录和相应页面，以及预算耗尽拒绝；全部启用账号的Cookie会话/角色跳转另有真实HTTP回归。学生验码、评分、提交及手动或自动返回已在临时合成库中通过浏览器验证；更多缓存边缘状态、导出按钮及页面交互仍需继续验收。登录故障修复将默认取数切换至真实API，没有修改数据库密码或降低密码散列强度。

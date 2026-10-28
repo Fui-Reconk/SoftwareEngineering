@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+
+{% block title %}账号管理 · TACES{% endblock %}
+{% block styles %}<link rel="stylesheet" href="{{ url_for('static', filename='css/accounts.css') }}">{% endblock %}
+
+{% block content %}
+<div class="title-row">
+  <div>
+    <h1>账号管理</h1>
+    <p class="sub">管理管理员、教师和审计员的账号与访问权限。</p>
+  </div>
+</div>
+
+<p class="form-error accounts-message" id="accountDenied" role="alert" hidden>当前账号没有管理权限。</p>
+<div class="accounts-message" id="accountSessionEnded" role="status" tabindex="-1" hidden>
+  <p id="accountSessionMessage">当前账号已更新，请重新登录。</p>
+  <a class="accounts-login" id="accountSessionLogin" href="{{ url_for('pages.login', next='/admin/accounts') }}">重新登录</a>
+</div>
+
+<div class="accounts-layout" id="accountWorkspace" hidden>
+  <section class="accounts-list" aria-labelledby="accountsListTitle">
+    <header class="accounts-section-head">
+      <h2 id="accountsListTitle">账号列表</h2>
+      <p class="caption">选择账号可修改角色、状态或重置密码。</p>
+    </header>
+    <div class="accounts-table-wrap">
+      <table class="accounts-table">
+        <thead>
+          <tr><th scope="col">用户名</th><th scope="col">角色</th><th scope="col">状态</th><th scope="col">操作</th></tr>
+        </thead>
+        <tbody id="accountRows"></tbody>
+      </table>
+    </div>
+    <p class="accounts-list-note" id="accountsEmpty" hidden>还没有账号。</p>
+    <p class="accounts-list-note" id="accountsLoading" role="status" hidden>正在加载账号…</p>
+    <p class="form-error accounts-list-note" id="accountsError" role="alert" hidden></p>
+    <div class="accounts-list-actions">
+      <button class="btn" type="button" id="accountsRetry" hidden>重试</button>
+      <button class="btn" type="button" id="accountsMore" hidden>加载更多</button>
+    </div>
+  </section>
+
+  <section class="accounts-editor" aria-labelledby="accountFormTitle">
+    <h2 id="accountFormTitle" tabindex="-1">新建账号</h2>
+    <form class="accounts-form" id="accountForm">
+      <fieldset id="accountFields">
+        <label class="field">
+          <span class="field-label">用户名</span>
+          <input class="input" id="accountUsername" type="text" autocomplete="off" autocapitalize="none"
+                 spellcheck="false" minlength="3" maxlength="64" pattern="[A-Za-z0-9_.-]{3,64}" required>
+          <span class="caption">3–64 位字母、数字、点、下划线或短横线。</span>
+        </label>
+        <label class="field">
+          <span class="field-label">角色</span>
+          <select class="input" id="accountRole">
+            <option value="teacher">教师</option>
+            <option value="admin">管理员</option>
+            <option value="auditor">审计员</option>
+          </select>
+        </label>
+        <label class="field" id="accountStatusField" hidden>
+          <span class="field-label">状态</span>
+          <select class="input" id="accountStatus">
+            <option value="true">启用</option>
+            <option value="false">停用</option>
+          </select>
+        </label>
+        <label class="field">
+          <span class="field-label" id="accountPasswordLabel">初始密码</span>
+          <input class="input" id="accountPassword" type="password" autocomplete="new-password"
+                 minlength="12" maxlength="128" required>
+          <span class="caption" id="accountPasswordHint">12–128 个字符。</span>
+        </label>
+        <p class="caption" id="accountSessionHint" hidden>保存修改后，该账号需要重新登录。</p>
+        <p class="form-error" id="accountFormError" role="alert" hidden></p>
+        <p class="accounts-saved" id="accountSaved" role="status" hidden></p>
+        <div class="accounts-form-actions">
+          <button class="btn primary" id="accountSave" type="submit">创建账号</button>
+          <button class="btn" id="accountCancel" type="button" hidden>取消编辑</button>
+        </div>
+      </fieldset>
+    </form>
+  </section>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/pages/accounts.js') }}"></script>
+{% endblock %}

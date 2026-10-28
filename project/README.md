@@ -56,10 +56,11 @@ python run.py
 | 学生验码与评分 | `/`、`/student`、`/student/evaluate` |
 | 员工工作区分流 | `/workspace` |
 | 教师看板 | `/teacher/<course_id>` |
+| 管理员账号管理 | `/admin/accounts` |
 | 管理员隐私配置 | `/admin/config` |
 | 管理员/审计员日志 | `/admin/audit` |
 
-管理员侧栏提供“隐私参数 / 查询留痕”，审计员只提供“查询留痕”，教师侧栏列出本人课程。管理员管理配置和审计，不具有教师的课程结果读取权限。品牌与账号退出固定在侧栏顶部/底部，中间导航独立滚动。
+管理员侧栏提供“账号管理 / 隐私参数 / 查询留痕”，审计员只提供“查询留痕”，教师侧栏列出本人课程。管理员可创建账号、修改角色和启用状态或重置密码，但不具有教师的课程结果读取权限。品牌与账号退出固定在侧栏顶部/底部，中间导航独立滚动。
 
 `/` 默认进入学生验码页；教职工可通过页面中的链接登录，登录后由 `/workspace` 在浏览器端根据账号角色跳转。正式模板位于 `src/taces/presentation/templates/`，页面取数统一经过 `static/js/api.js`，Mock 数据集中在 `static/js/mock.js`。`USE_MOCK=true` 时，页面中的登录、统计、配置和日志均为模拟交互，不代表真实库中的账号或数据。
 
@@ -99,13 +100,13 @@ Flask 负责表现层，业务与数据层不依赖 Flask。纯隐私计算位�
 ```bash
 python -m pytest -q --cov=taces --cov-report=term-missing
 python -m pytest -q tests/integration/test_test_data.py
-node --test tests/js/board.test.cjs tests/js/config.test.cjs tests/js/evaluate.test.cjs tests/js/login.test.cjs tests/js/shell.test.cjs
+node --test tests/js/board.test.cjs tests/js/config.test.cjs tests/js/evaluate.test.cjs tests/js/login.test.cjs tests/js/shell.test.cjs tests/js/accounts.test.cjs
 
 # 复核已生成的数据，不改演示库；首次需先生成默认数据集
 python scripts/generate_test_data.py --verify-only tests/experiments/output/testdata
 ```
 
-Python 测试使用临时库；系统测试包含真实本地 HTTP 闭环。JS 回归需要 Node.js，涵盖配置页请求、登录会话与角色跳转，以及学生提交后的返回行为。涉及后端的 JS 测试使用 PATH 中的 Python（Windows 为 `python`，其他系统为 `python3`）；也可通过环境变量 `TACES_TEST_PYTHON` 指定解释器。数据校验另检查阈值、评分/文本边界、权限、缓存、预算、导出及性能。
+Python 测试使用临时库；系统测试包含真实本地 HTTP 闭环。JS 回归需要 Node.js，涵盖配置页请求、账号管理、登录会话与角色跳转，以及学生提交后的返回行为。涉及后端的 JS 测试使用 PATH 中的 Python（Windows 为 `python`，其他系统为 `python3`）；也可通过环境变量 `TACES_TEST_PYTHON` 指定解释器。数据校验另检查阈值、评分/文本边界、权限、缓存、预算、导出及性能。
 
 已完成 Windows 本地验证；Linux双平台对照、长期运行及全部页面边缘交互尚未验收。文档更新不代表重新运行全部业务测试，执行记录应注明实际命令与范围。
 

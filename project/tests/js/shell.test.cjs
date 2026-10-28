@@ -69,17 +69,22 @@ async function render(role, { pathname = '/admin/config', courses = [], failure 
     resize(width) { context.window.innerWidth = width; windowEvents.resize?.(); } };
 }
 
-test('admin always has configuration and audit destinations without fetching teacher courses', async () => {
+test('admin has account management, configuration and audit destinations without fetching teacher courses', async () => {
   const view = await render('admin', { pathname: '/admin/audit' });
   assert.deepEqual(view.requests, ['/api/auth/me']);
   const nav = view.elements.get('staffNav');
   assert.equal(nav.hidden, false);
   assert.deepEqual(nav.children.map((link) => [link.textContent, link.href]), [
-    ['隐私参数', '/admin/config'], ['查询留痕', '/admin/audit'],
+    ['账号管理', '/admin/accounts'], ['隐私参数', '/admin/config'], ['查询留痕', '/admin/audit'],
   ]);
-  assert.equal(nav.children[1].attributes['aria-current'], 'page');
+  assert.equal(nav.children[2].attributes['aria-current'], 'page');
   assert.equal(view.elements.get('courseSection').hidden, true);
   assert.equal(view.csrf.content, 'test-csrf');
+});
+
+test('account management is marked as the current destination for an admin', async () => {
+  const view = await render('admin', { pathname: '/admin/accounts' });
+  assert.equal(view.elements.get('staffNav').children[0].attributes['aria-current'], 'page');
 });
 
 test('auditor has only the audit destination and never calls the courses endpoint', async () => {

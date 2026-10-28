@@ -61,7 +61,7 @@
 
   function renderNavigation(role) {
     const destinations = role === 'admin'
-      ? [['隐私参数', '/admin/config'], ['查询留痕', '/admin/audit']]
+      ? [['账号管理', '/admin/accounts'], ['隐私参数', '/admin/config'], ['查询留痕', '/admin/audit']]
       : role === 'auditor' ? [['查询留痕', '/admin/audit']] : [];
     staffNav.textContent = '';
     destinations.forEach(([label, href]) => {
@@ -115,14 +115,15 @@
     renderAccount(session.account);
     if (!sidebar) return;
     renderNavigation(session.account.role);
-    // 课程结果只属于任课教师；管理员使用配置/审计导航。
-    if (session.account.role !== 'teacher') return;
+    // 课程结果只属于任课教师；管理员使用管理与配置导航。
+    if (session.account.role !== 'teacher') return session;
     try {
       const courses = (await window.API.get('/api/courses')).courses || [];
       renderCourses(courses);
     } catch (failure) {
       courseList.textContent = '课程列表取不到。';
     }
+    return session;
   }
 
   window.SHELL = { ready: start() };

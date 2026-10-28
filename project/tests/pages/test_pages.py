@@ -107,6 +107,16 @@ def test_config_page_names_three_parameters_and_their_scope(app):
     assert "每门课预算总量" in body
 
 
+def test_admin_account_page_provides_management_form_and_list(app):
+    response = app.test_client().get("/admin/accounts")
+    assert response.status_code == 200
+    body = response.get_data(as_text=True)
+    assert "账号管理" in body
+    assert 'id="accountForm"' in body
+    assert 'id="accountRows"' in body
+    assert 'js/pages/accounts.js' in body
+
+
 def test_audit_page_is_read_only(app):
     body = app.test_client().get("/admin/audit").get_data(as_text=True)
     assert "查询留痕" in body

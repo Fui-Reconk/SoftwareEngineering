@@ -38,6 +38,11 @@ def student_evaluate():
     return render_template("student/evaluate.html")
 
 
+@pages.get("/admin/accounts")
+def admin_accounts():
+    return render_template("admin/accounts.html", shell="staff")
+
+
 @pages.get("/admin/config")
 def admin_config():
     return render_template("admin/config.html", shell="staff")

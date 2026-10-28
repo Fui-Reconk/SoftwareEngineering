@@ -18,7 +18,7 @@
 | 统计发布，第4片 | 已实现阈值、向量噪声、发布缓存、预算原子扣费 | 本文第14节 |
 | 配置与审计，第5片 | 已实现参数范围校验、每课预算上限和审计筛选查询 | 本文第15节 |
 | 快照导出，第6片 | 已实现CSV/PDF、指定历史快照、导出留痕 | 本文第16节 |
-| 前端 | 六个功能页面和入口页已实现，USE_MOCK=false；真实登录已验证，导出按钮尚未接API | [FRONTEND.md](FRONTEND.md) |
+| 前端 | 各角色页面与入口已实现，USE_MOCK=false；支持课程发码、本人改密和快照导出 | [FRONTEND.md](FRONTEND.md) |
 
 需求编号沿用 SRS 的 FR1–FR10、NFR1–NFR7。需求原稿在 class2/assets/docs/，用例在
 class3/assets/docs/，实现说明不覆盖或重生成这些手工维护的资料。
@@ -83,6 +83,7 @@ metadata.db（main） + identity.db + evaluation.db
 | PATCH /api/admin/accounts/<user_id> | 管理员 + CSRF | 修改角色、状态或密码，撤销目标全部会话 |
 | GET /api/courses | 管理员或教师 | 管理员读全部元信息，教师只读本人课程 |
 | GET /api/courses/<course_id> | 管理员或该课程教师 | 单课元信息，跨教师访问拒绝 |
+| GET /api/admin/courses | 管理员 | 课程元信息、截止时间与评分维度，不返回评价码 |
 | POST /api/admin/courses | 管理员+CSRF | 创建课程、维度、窗口与每课预算，201 |
 | PATCH /api/admin/courses/<course_id> | 管理员+CSRF | 修改课程名/学期/归属/截止时间 |
 | POST /api/admin/courses/<course_id>/evaluation-codes | 管理员+CSRF | 批量发码，201；只此响应可得明文 |
@@ -315,4 +316,4 @@ PDF使用ReportLab并对用户文字转义，表头跨页重复。优先使用�
 
 本地临时库真实HTTP闭环：管理员登录/建教师与审计员/建课/发码→学生无会话验码并提交→教师发布/缓存重读/导出→审计员读取带课程筛选项的日志。使用随机本地端口，结束时关闭服务，无真实库写入。
 单次1万份、每份3维的临时数据首次发布耗时0.166秒（仅本机观察，非跨机器性能承诺）。两页中文PDF已用pypdf校验文本/数值，并渲染逐页检查。尚未运行Linux/Windows双平台对照、72小时长期运行、断电/磁盘满故障、HTTPS代理联调或形式化有限精度DP审计；前端mock开关和页面联调由前端负责。
-本轮执行环境为Windows；Linux对照、长稳和OS故障注入需另设验收环境与运行窗口，HTTPS需部署环境，形式化DP需独立审计，均未纳入这次业务闭环验证。前后端代码已合入主分支，页面默认已切换真实API；登录/会话/角色跳转已验证，导出按钮等行为仍待接入。
+本轮执行环境为Windows；Linux对照、长稳和OS故障注入需另设验收环境与运行窗口，HTTPS需部署环境，形式化DP需独立审计，均未纳入这次业务闭环验证。页面默认连接真实API；登录、课程发码及当前快照导出已在临时库验证。

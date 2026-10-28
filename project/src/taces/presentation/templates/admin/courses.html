@@ -63,12 +63,26 @@
           <input class="input" id="courseTerm" type="text" maxlength="100" placeholder="例如：2026 秋季" required>
         </label>
         <label class="field">
+          <span class="field-label">评价截止时间</span>
+          <input class="input" id="courseClosesAt" type="datetime-local">
+          <span class="caption">按本机时区填写；新建时留空默认开放 7 天。延长课程截止时间不会延长已发评价码的有效期。</span>
+        </label>
+        <label class="field">
           <span class="field-label">任课教师</span>
           <select class="input" id="courseTeacher" required></select>
         </label>
         <p class="caption" id="courseTeacherHint" role="status" hidden></p>
         <a class="accounts-login courses-account-link" id="courseTeacherLink" href="{{ url_for('pages.admin_accounts') }}" hidden>前往账号管理</a>
-        <p class="caption" id="courseDefaultHint">新建课程默认开放评价 7 天，使用三个默认评价维度。</p>
+        <div id="courseDimensionCreate">
+          <label class="course-checkbox"><input id="courseUseCustom" type="checkbox"> 自定义评价维度与权重</label>
+          <p class="caption" id="courseDefaultHint">默认使用教学内容、教学方法、考核方式三个等权维度。维度在创建后不可修改。</p>
+          <fieldset id="courseCustomSection" hidden disabled>
+            <div class="course-dimension-rows" id="courseDimensionRows"></div>
+            <button class="btn" id="courseAddDimension" type="button">添加维度</button>
+            <p class="caption">1–10 个维度，权重为大于 0 的小数，合计为 1。</p>
+          </fieldset>
+        </div>
+        <p class="caption" id="courseDimensionSummary" hidden></p>
         <p class="form-error" id="courseFormError" role="alert" hidden></p>
         <div class="accounts-form-actions">
           <button class="btn primary" id="courseSave" type="submit">创建课程</button>
@@ -76,6 +90,38 @@
         </div>
       </fieldset>
     </form>
+  </dialog>
+
+  <dialog class="accounts-dialog" id="codeDialog" aria-labelledby="codeDialogTitle">
+    <div class="accounts-dialog-head">
+      <h2 id="codeDialogTitle" tabindex="-1">发放评价码</h2>
+      <button class="btn ghost accounts-dialog-close" type="button" id="codeClose" aria-label="关闭弹窗">关闭</button>
+    </div>
+    <p class="caption code-window" id="codeWindow"></p>
+    <form class="accounts-form" id="codeForm">
+      <fieldset id="codeFields">
+        <label class="field"><span class="field-label">发放数量</span>
+          <input class="input" id="codeCount" type="number" min="1" max="1000" step="1" value="1" required>
+          <span class="caption">每次 1–1000 个，每个评价码可使用一次。</span>
+        </label>
+        <label class="field"><span class="field-label">评价码有效期（选填）</span>
+          <input class="input" id="codeExpiresAt" type="datetime-local">
+          <span class="caption">按本机时区填写；留空时与课程截止时间相同。</span>
+        </label>
+        <p class="form-error" id="codeError" role="alert" hidden></p>
+        <div class="accounts-form-actions"><button class="btn primary" id="codeIssue" type="submit">发放评价码</button></div>
+      </fieldset>
+    </form>
+    <section class="code-result" id="codeResult" aria-labelledby="codeResultTitle" hidden>
+      <h3 id="codeResultTitle">评价码已生成</h3>
+      <p class="caption">评价码仅在本次显示，请复制或下载后再关闭。</p>
+      <textarea class="input code-values" id="codeValues" aria-label="已生成的评价码" rows="8" readonly></textarea>
+      <div class="accounts-form-actions">
+        <button class="btn primary" id="codeCopy" type="button">复制评价码</button>
+        <button class="btn" id="codeDownload" type="button">下载 TXT</button>
+      </div>
+      <p class="caption" id="codeSaved" role="status" hidden></p>
+    </section>
   </dialog>
 </div>
 {% endblock %}

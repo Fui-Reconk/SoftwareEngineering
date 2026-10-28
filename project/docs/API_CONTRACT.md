@@ -2,7 +2,7 @@
 
 本文记录当前已实现的业务接口，供页面与HTTP客户端使用。账号管理完整契约见 [AUTH.md](AUTH.md)，课程管理、事务与隐私假设见 [BACKEND.md](BACKEND.md)。字段变更须同步调用方并在末尾登记。
 
-页面默认连接真实API，真实登录与按角色跳转已验证；导出按钮尚未接入已实现的导出API。
+页面默认连接真实API；教师看板可导出当前快照，亦可输入已知发布编号导出历史快照；侧栏独立导出入口不请求统计发布接口。
 
 统一约定：成功响应 `{"data": ...}`，错误响应 `{"error": {"code": "...", "message": "..."}}`。
 登录请求携带 `X-TACES-Request: 1`；已登录员工的写操作带 `X-CSRF-Token`，值来自登录响应或 `/api/auth/me`。`/api` 前缀以外的请求返回 HTML 错误页。
@@ -18,7 +18,9 @@
 | `POST /api/auth/login` | 已有 | `{account, csrf_token, expires_at}` |
 | `GET /api/auth/me` | 已有 | `{account, csrf_token, expires_at}` |
 | `POST /api/auth/logout` | 已有 | `{logged_out: true}` |
+| `POST /api/auth/password` | 已有 | `{login_required: true}`；撤销本人全部会话 |
 | `GET /api/courses` | 已有 | `{courses: [{course_id, name, teacher_id, term}]}`，教师只看到本人的课 |
+| `GET /api/admin/courses` | 已有 | 管理员专用 `{courses: [{course_id, name, teacher_id, term, closes_at, dimensions: [{name, weight}]}]}`，不返回评价码 |
 
 `account` 为 `{user_id, username, role, is_active, created_at}`，`role` 取 `teacher` / `admin` / `auditor`。
 **审计员调不了 `GET /api/courses`**（`list_courses` 只放行 admin 与有 `courses:own` 的教师），页面不要对审计员发这个请求。
@@ -124,10 +126,10 @@
 
 from/to支持上海本地YYYY-MM-DD日期和带时区ISO时间（最多六位小数秒）；日期to含整天，ISO to含该时刻。limit默认50、上限100；offset非负。重复/未知查询键、非法或反向时间范围400。
 
-### 6. 快照导出（第6片，后端新增）
+### 6. 快照导出（第6片）
 
 `GET /api/courses/<course_id>/export?format=csv|pdf&publication=<可选publicationId>`，仅课程所属教师。format默认csv，指定publicationId可取历史发布；省略则取最后一次发布。返回附件文件，不套JSON data。CSV为UTF-8 BOM；PDF支持中文。导出不触发发布、不扣预算，保留与看板相同的快照编号、时间和数值。
-无发布409 NOT_PUBLISHED，指定快照不存在或不属于该课404 PUBLICATION_NOT_FOUND，非法/重复/未知查询参数400。看板按钮当前仍禁用，页面导出与Mock切换尚待接入。
+无发布409 NOT_PUBLISHED，指定快照不存在或不属于该课404 PUBLICATION_NOT_FOUND，非法/重复/未知查询参数400。看板按当前显示的 `publicationId` 导出，避免页面过期时误取较新的快照；也可输入已知的历史编号导出。教师侧栏的独立导出页只读取课程列表并调用导出接口，可直接下载最近一次或指定编号的已发布快照。Mock 模式不支持文件导出。
 
 ## 差异登记
 

@@ -1,3 +1,4 @@
+import time
 import hashlib
 import json
 import re
@@ -139,3 +140,15 @@ def test_surrogate_teacher_id_returns_validation_error(staff, method):
     assert response.json["error"]["code"] == "INVALID_INPUT"
     actual = staff["client"].get("/api/courses").json["data"]["courses"]
     assert actual == ([original] if method == "patch" else [])
+
+
+def test_admin_course_list_exposes_window_and_dimensions_only_to_admin(staff):
+    closes_at = int(time.time()) + 3600
+    dimensions = [{"name": "内容", "weight": 0.7}, {"name": "反馈", "weight": 0.3}]
+    course = create_course(staff, closes_at=closes_at, dimensions=dimensions)
+    response = staff["client"].get("/api/admin/courses")
+    assert response.status_code == 200
+    assert response.json["data"]["courses"] == [{**course, "closes_at": closes_at, "dimensions": dimensions}]
+    teacher, _ = login_role(staff)
+    assert teacher.get("/api/admin/courses").status_code == 403
+    assert staff["app"].test_client().get("/api/admin/courses").status_code == 401

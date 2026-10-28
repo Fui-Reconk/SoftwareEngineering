@@ -54,6 +54,22 @@ class CourseService:
             (uuid4().hex, course_id, course_id),
         )
 
+    def list_for_management(self, token):
+        with self.auth._operation(token, "courses.manage.list") as (connection, actor):
+            require_permission(actor, "courses:manage")
+            courses = [dict(row) for row in connection.execute(
+                "SELECT c.*,s.closes_at FROM main.course c "
+                "LEFT JOIN main.course_state s ON s.course_id=c.course_id ORDER BY c.course_id"
+            )]
+            by_id = {course["course_id"]: course for course in courses}
+            for course in courses:
+                course["dimensions"] = []
+            for dimension in connection.execute("SELECT course_id,name,weight FROM main.dimension ORDER BY rowid"):
+                if dimension["course_id"] in by_id:
+                    by_id[dimension["course_id"]]["dimensions"].append(
+                        {"name": dimension["name"], "weight": dimension["weight"]})
+            return courses
+
     def create(self, token, body):
         with self.auth._operation(token, "courses.create", write=True) as (connection, actor):
             require_permission(actor, "courses:manage")

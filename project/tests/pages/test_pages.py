@@ -150,17 +150,6 @@ def test_board_offers_both_snapshot_export_formats(app):
     assert 'id="exportError"' in body
 
 
-def test_snapshot_export_page_does_not_shadow_course_named_exports(app):
-    client = app.test_client()
-    response = client.get("/teacher/exports/history")
-    assert response.status_code == 200
-    body = response.get_data(as_text=True)
-    for control in ("exportCourse", "exportPublication", "exportLatestPdf", "exportLatestCsv"):
-        assert f'id="{control}"' in body
-    assert "js/pages/exports.js" in body
-    assert 'id="board"' in client.get("/teacher/exports").get_data(as_text=True)
-
-
 def test_staff_password_page_and_workspace_link(app):
     client = app.test_client()
     response = client.get("/account/password")
@@ -172,3 +161,21 @@ def test_staff_password_page_and_workspace_link(app):
     assert 'id="confirmPassword"' in body
     assert 'href="/account/password"' in client.get("/workspace").get_data(as_text=True)
     assert 'href="/account/password"' in client.get("/admin/courses").get_data(as_text=True)
+
+
+def test_course_page_exposes_deadline_dimensions_and_code_issuance(app):
+    body = app.test_client().get("/admin/courses").get_data(as_text=True)
+    for control in ("courseClosesAt", "courseUseCustom", "courseDimensionRows",
+                    "codeDialog", "codeForm", "codeCount", "codeValues", "codeCopy", "codeDownload"):
+        assert f'id="{control}"' in body
+
+
+def test_snapshot_export_page_does_not_shadow_course_named_exports(app):
+    client = app.test_client()
+    response = client.get("/teacher/exports/history")
+    assert response.status_code == 200
+    body = response.get_data(as_text=True)
+    for control in ("exportCourse", "exportPublication", "exportLatestPdf", "exportLatestCsv"):
+        assert f'id="{control}"' in body
+    assert "js/pages/exports.js" in body
+    assert 'id="board"' in client.get("/teacher/exports").get_data(as_text=True)

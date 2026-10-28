@@ -13,6 +13,12 @@ def course_service():
     return CourseService(current_app.extensions["taces_database"], current_app.extensions["taces_auth"])
 
 
+@courses_admin.get("/admin/courses")
+@protected()
+def list_courses_for_management():
+    return jsonify(data={"courses": course_service().list_for_management(token())})
+
+
 @courses_admin.post("/admin/courses")
 @protected(write=True)
 def create_course():

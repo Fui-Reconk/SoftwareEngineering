@@ -43,10 +43,10 @@ Werkzeug 的直接依赖已列入 `pyproject.toml` 与 `requirements.txt`；安�
 
 未登录返回 401，角色或课程归属不符返回 403。角色取自服务端账号，客户端提交角色不能改变权限。
 教师的 `user_id` 对应课程的 `teacher_id`；教师账号降为其他角色前须先转移课程。
-已有课程的旧 `teacher_id` 不会自动猜测映射到新账号，需通过课程管理 API 显式分配。
+已有课程的旧 `teacher_id` 不会自动猜测映射到新账号，需由管理员在课程管理页面或通过 API 显式分配。
 管理员对课程元信息的访问不赋予统计查询权，统计与导出服务分别校验对应权限；统计服务校验 `statistics:own` 和课程归属。
 
-账号禁用、角色修改、管理员重置密码、本人修改密码会撤销该账号全部会话。
+教职工可在账号区进入“修改密码”，提供当前密码后设置新密码；无课程教师也可从工作区进入。账号禁用、角色修改、管理员重置密码、本人修改密码会撤销该账号全部会话。
 修改当前账号后需重新登录。系统始终保留至少一个启用的管理员，冲突返回 `409 / LAST_ADMIN`。
 账号管理写入与操作者的权限复核在同一个写事务中完成。
 
@@ -65,6 +65,7 @@ JSON 接口拒绝未知字段和错误类型；账号响应不含密码散列或
 | `POST /api/admin/accounts` | 管理员 Cookie + CSRF 头；JSON：`username`, `password`, `role` | 201，`account` |
 | `PATCH /api/admin/accounts/<user_id>` | 管理员 Cookie + CSRF 头；JSON：`role`、布尔 `is_active`、`password` 中至少一项 | `account` |
 | `GET /api/courses` | 管理员或教师 Cookie | `courses`，教师仅看到本人课程 |
+| `GET /api/admin/courses` | 管理员 Cookie | `courses`，含截止时间和维度设置 |
 | `GET /api/courses/<course_id>` | 管理员或该课程教师 Cookie | `course`，不存在返回 404 |
 
 `account` 包含 `user_id`、`username`、`role`、布尔 `is_active` 和整数 `created_at`。

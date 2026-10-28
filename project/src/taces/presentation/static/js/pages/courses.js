@@ -268,6 +268,7 @@
     term.value = selected ? selected.term : '';
     initialDeadline = selected ? inputTime(selected.closes_at) : '';
     closesAt.value = initialDeadline;
+    window.TacesDatePicker?.sync(closesAt);
     useCustom.checked = false;
     customSection.hidden = true;
     customSection.disabled = true;
@@ -394,6 +395,7 @@
       : `${deadlineLabel(course.closes_at)}（本机时间）`;
     codeCount.value = '1';
     codeExpiresAt.value = '';
+    window.TacesDatePicker?.sync(codeExpiresAt);
     codeError.hidden = true;
     codeSaved.hidden = true;
     codeForm.hidden = false;

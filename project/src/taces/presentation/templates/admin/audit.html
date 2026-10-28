@@ -1,21 +1,23 @@
 {% extends "base.html" %}
+{% from "_date_picker.html" import date_input, date_dialog %}
 
 {% block title %}查询留痕 · TACES{% endblock %}
+{% block styles %}<link rel="stylesheet" href="{{ url_for('static', filename='css/date-picker.css') }}">{% endblock %}
 
 {% block content %}
 <div class="title-row">
   <div>
     <h1>查询留痕</h1>
   </div>
-  <div class="title-actions">
-    <label class="inline-field">
-      <span class="field-label">从</span>
-      <input class="input select" type="date" id="fromDate">
-    </label>
-    <label class="inline-field">
-      <span class="field-label">到</span>
-      <input class="input select" type="date" id="toDate">
-    </label>
+  <div class="title-actions audit-filters">
+    <div class="inline-field">
+      <span class="field-label" id="fromDateLabel">从</span>
+      {{ date_input('fromDate', 'fromDateLabel') }}
+    </div>
+    <div class="inline-field">
+      <span class="field-label" id="toDateLabel">到</span>
+      {{ date_input('toDate', 'toDateLabel') }}
+    </div>
     <label class="inline-field">
       <span class="field-label">课程</span>
       <select class="input select" id="courseFilter"></select>
@@ -42,8 +44,10 @@
 <div class="audit-foot">
   <button class="btn" type="button" id="loadMore" hidden>加载更多</button>
 </div>
+{{ date_dialog() }}
 {% endblock %}
 
 {% block scripts %}
+<script src="{{ url_for('static', filename='js/date-picker.js') }}"></script>
 <script src="{{ url_for('static', filename='js/pages/audit.js') }}"></script>
 {% endblock %}

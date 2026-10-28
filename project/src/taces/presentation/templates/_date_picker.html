@@ -1,0 +1,52 @@
+{% macro date_input(input_id, label_id, with_time=false, hint_id=none) -%}
+<div class="date-picker{% if not with_time %} date-picker-date{% endif %}">
+  <input class="input date-picker-native" id="{{ input_id }}" type="{{ 'datetime-local' if with_time else 'date' }}"
+         lang="zh-CN" aria-labelledby="{{ label_id }}"{% if hint_id %} aria-describedby="{{ hint_id }}"{% endif %}>
+  <button class="input date-picker-trigger" type="button" data-date-for="{{ input_id }}"
+          data-with-time="{{ 'true' if with_time else 'false' }}" aria-haspopup="dialog"
+          aria-expanded="false" aria-controls="datePickerDialog" aria-labelledby="{{ label_id }} {{ input_id }}Value"
+          {% if hint_id %}aria-describedby="{{ hint_id }}"{% endif %} hidden>
+    <span id="{{ input_id }}Value" data-date-value>{{ '请选择日期和时间' if with_time else '请选择日期' }}</span>
+    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M5 4h14a2 2 0 0 1 2 2v13H3V6a2 2 0 0 1 2-2Zm2-2v4m10-4v4M3 9h18"></path></svg>
+  </button>
+</div>
+{%- endmacro %}
+
+{% macro date_dialog() -%}
+<dialog class="date-picker-dialog" id="datePickerDialog" aria-label="选择日期">
+  <div class="date-picker-navigation">
+    <button class="date-picker-nav" type="button" id="datePrevious" aria-label="上个月">
+      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m14 6-6 6 6 6"></path></svg>
+    </button>
+    <div class="date-picker-month">
+      <label class="visually-hidden" for="dateYear">年份</label>
+      <input class="date-picker-year" id="dateYear" type="number" min="1" max="9999" step="1" inputmode="numeric">
+      <span>年</span>
+      <label class="visually-hidden" for="dateMonth">月份</label>
+      <select class="date-picker-month-select" id="dateMonth">
+        {% for month in range(1, 13) %}<option value="{{ month }}">{{ month }}月</option>{% endfor %}
+      </select>
+    </div>
+    <button class="date-picker-nav" type="button" id="dateNext" aria-label="下个月">
+      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m10 6 6 6-6 6"></path></svg>
+    </button>
+  </div>
+  <table class="date-picker-calendar" aria-label="日历">
+    <thead><tr>{% for day in ['一', '二', '三', '四', '五', '六', '日'] %}<th scope="col">{{ day }}</th>{% endfor %}</tr></thead>
+    <tbody id="dateGrid"></tbody>
+  </table>
+  <div class="date-picker-time" id="dateTimeControls" hidden>
+    <span>时间</span>
+    <label for="dateHour">时</label><select id="dateHour"></select>
+    <label for="dateMinute">分</label><select id="dateMinute"></select>
+  </div>
+  <p class="form-error date-picker-error" id="dateError" role="alert" hidden></p>
+  <div class="date-picker-actions">
+    <button class="btn" type="button" id="dateClear">清除</button>
+    <button class="btn" type="button" id="dateToday">今天</button>
+    <span class="date-picker-spacer"></span>
+    <button class="btn" type="button" id="dateCancel">取消</button>
+    <button class="btn primary" type="button" id="dateConfirm">确定</button>
+  </div>
+</dialog>
+{%- endmacro %}

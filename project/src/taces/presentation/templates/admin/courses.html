@@ -1,9 +1,11 @@
 {% extends "base.html" %}
+{% from "_date_picker.html" import date_input, date_dialog %}
 
 {% block title %}课程管理 · TACES{% endblock %}
 {% block styles %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/accounts.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/courses.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/date-picker.css') }}">
 {% endblock %}
 
 {% block content %}
@@ -62,11 +64,11 @@
           <span class="field-label">学期</span>
           <input class="input" id="courseTerm" type="text" maxlength="100" placeholder="例如：2026 秋季" required>
         </label>
-        <label class="field">
-          <span class="field-label">评价截止时间</span>
-          <input class="input" id="courseClosesAt" type="datetime-local">
-          <span class="caption">按本机时区填写；新建时留空默认开放 7 天。延长课程截止时间不会延长已发评价码的有效期。</span>
-        </label>
+        <div class="field">
+          <span class="field-label" id="courseClosesAtLabel">评价截止时间</span>
+          {{ date_input('courseClosesAt', 'courseClosesAtLabel', true, 'courseClosesAtHint') }}
+          <span class="caption" id="courseClosesAtHint">按本机时区填写；新建时留空默认开放 7 天。延长课程截止时间不会延长已发评价码的有效期。</span>
+        </div>
         <label class="field">
           <span class="field-label">任课教师</span>
           <select class="input" id="courseTeacher" required></select>
@@ -104,10 +106,10 @@
           <input class="input" id="codeCount" type="number" min="1" max="1000" step="1" value="1" required>
           <span class="caption">每次 1–1000 个，每个评价码可使用一次。</span>
         </label>
-        <label class="field"><span class="field-label">评价码有效期（选填）</span>
-          <input class="input" id="codeExpiresAt" type="datetime-local">
-          <span class="caption">按本机时区填写；留空时与课程截止时间相同。</span>
-        </label>
+        <div class="field"><span class="field-label" id="codeExpiresAtLabel">评价码有效期（选填）</span>
+          {{ date_input('codeExpiresAt', 'codeExpiresAtLabel', true, 'codeExpiresAtHint') }}
+          <span class="caption" id="codeExpiresAtHint">按本机时区填写；留空时与课程截止时间相同。</span>
+        </div>
         <p class="form-error" id="codeError" role="alert" hidden></p>
         <div class="accounts-form-actions"><button class="btn primary" id="codeIssue" type="submit">发放评价码</button></div>
       </fieldset>
@@ -124,8 +126,10 @@
     </section>
   </dialog>
 </div>
+{{ date_dialog() }}
 {% endblock %}
 
 {% block scripts %}
+<script src="{{ url_for('static', filename='js/date-picker.js') }}"></script>
 <script src="{{ url_for('static', filename='js/pages/courses.js') }}"></script>
 {% endblock %}

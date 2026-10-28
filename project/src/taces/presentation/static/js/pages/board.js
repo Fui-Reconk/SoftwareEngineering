@@ -24,7 +24,7 @@
     setText('courseTitle', data.courseTitle);
     setText('courseSub',
       [data.term, data.courseCode,
-        `选课 ${f.int(data.enrolled)} 人`,
+        `已发评价码 ${f.int(data.enrolled)} 个`,
         `有效评价 ${f.int(data.responses)} 份（${f.pct(1)(data.responses / data.enrolled)}）`]
         .filter(Boolean).join(' · '));
 
@@ -82,7 +82,7 @@
 
     drawWords(data.openText);
     setText('record', data.budgetExhausted
-      ? `发布于 ${stamp(data.publishedAt)} · 预算已用完，这份不会再更新`
+      ? `发布于 ${stamp(data.publishedAt)} · 当前预算不足以再次发布`
       : `发布于 ${stamp(data.publishedAt)}`);
   }
 
@@ -176,7 +176,7 @@
 
     const exhausted = data.reason === 'budget_exhausted';
     setText('refusedTitle', exhausted
-      ? '预算已用完，暂时没有可查看的发布结果'
+      ? '预算不足，暂时没有可查看的发布结果'
       : `还差 ${f.int(data.shortfall)} 份评价才能出数`);
     setText('refusedWhy', exhausted
       ? '这门课尚无已保存的发布结果，剩余预算不足以发布新结果。请联系管理员调整预算。'

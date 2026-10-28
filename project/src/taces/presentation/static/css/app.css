@@ -63,10 +63,6 @@
   --t-ui: 200ms;
 }
 
-/* 色调已定为松绿，备选四套（冷纸青灰 / 墨蓝 / 石墨 / 夜间）删掉了。
-   要换只是改上面这一段 token：色相动 --accent、--chart-1、--chart-band*、--grid，
-   纸的冷暖动 --ground、--raised、--active、--border、--rule、--control，其余不用碰。 */
-
 *, *::before, *::after { box-sizing: border-box; }
 html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; caret-color: var(--accent); }
 body {
@@ -365,7 +361,7 @@ a:hover { text-decoration: underline; text-underline-offset: 3px; }
   color: var(--accent); font-size: var(--fs-small); font-weight: 500;
 }
 .btn.primary { background: var(--accent); border-color: transparent; color: #ffffff; }
-.btn.primary:hover { background: #1a5c43; }
+.btn.primary:hover { background: #00707c; }
 .btn:disabled { background: var(--raised); border-color: var(--border); color: var(--faint); cursor: not-allowed; }
 
 .hint {

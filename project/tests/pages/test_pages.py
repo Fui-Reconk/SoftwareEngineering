@@ -79,10 +79,10 @@ def test_board_renders_its_blocks(app):
     assert "开放题高频词" in body
 
 
-def test_board_promises_that_text_and_scores_stay_unlinked(app):
+def test_board_explains_that_comment_text_is_not_shown_to_teachers(app):
     body = app.test_client().get("/teacher/SE201-03").get_data(as_text=True)
-    assert "不关联" in body
-    assert "原文不进接口" in body
+    assert "教师页面和导出文件不展示评语原文" in body
+    assert "分数和文字不关联" not in body
 
 
 def test_code_page_states_the_three_failures(app):
@@ -99,6 +99,9 @@ def test_evaluate_page_renders_scale_and_receipt(app):
     assert "开放题" in body
     assert "500" in body
     assert "不能再改" in body
+    assert "评分与评语保存在同一份匿名评价中" in body
+    assert "请勿填写姓名、学号等个人信息" in body
+    assert "分数和文字不关联" not in body
     assert "5 秒后自动返回首页" in body
     assert re.search(r'<a\b[^>]*href="/"[^>]*>\s*返回首页\s*</a>', body)
 
@@ -108,6 +111,8 @@ def test_config_page_names_three_parameters_and_their_scope(app):
     assert "每次发布 ε" in body
     assert "出数门槛 k" in body
     assert "每门课预算总量" in body
+    assert "有效评价少于门槛时不发布新的统计结果" in body
+    assert "每门课程用于发布统计的 ε 总量" in body
 
 
 def test_admin_account_page_provides_management_form_and_list(app):

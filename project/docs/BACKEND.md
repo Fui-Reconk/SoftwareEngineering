@@ -1,6 +1,6 @@
 # TACES 后端实现说明
 
-更新日期：2026-10-27。本文描述已合入主分支的当前实现；本机用途为合成数据演示与自动化测试。
+更新日期：2026-10-28。本文描述已合入主分支的当前实现；本机用途为合成数据演示与自动化测试。
 
 本文说明后端能力、层间协作、数据与权限边界，以及已有验证和未验收范围。
 账号操作见 [AUTH.md](AUTH.md)，业务字段见 [API_CONTRACT.md](API_CONTRACT.md)。
@@ -25,7 +25,7 @@ class3/assets/docs/，实现说明不覆盖或重生成这些手工维护的资�
 2026-10-26 已确定的预算口径是：**新发布扣预算，读取已有发布结果免费，重新采样视为新发布**。
 v3迁移建立发布缓存agg_result及工作流支撑表；统计服务使用数据版本和策略修订号确定发布缓存。
 
-本机合成演示三库已由数据生成器安装；数据库与账号/评价码清单不进入版本库。重新生成、备份和恢复见 [测试数据工具](../scripts/README.md)。
+可使用数据生成器安装本机合成演示三库；数据库与账号/评价码清单不进入版本库。重新生成、备份和恢复见 [测试数据工具](../scripts/README.md)。
 
 ## 2. 维护边界
 
@@ -68,7 +68,7 @@ metadata.db（main） + identity.db + evaluation.db
 ## 4. 已有 API 契约
 
 所有下列路径均已注册。成功返回 data，失败返回 error.code / error.message。
-统计GET可在首次满足门槛时发布并扣费；其余GET只读业务数据。认证后的拒绝和统计读取可写审计。
+统计GET在满足门槛且需要新发布时可扣费；其余GET只读业务数据。认证后的拒绝和统计读取可写审计。
 
 | 方法与路径 | 调用者/约束 | 行为 |
 | --- | --- | --- |
@@ -105,7 +105,7 @@ metadata.db（main） + identity.db + evaluation.db
 
 所有账号写入都在同一个写事务内重新验证操作者，阻止预认证后被停用/撤权仍然修改。
 最后一个启用管理员不能被停用或降权。教师仍有课程时，改变其角色返回 ROLE_IN_USE。
-已有课程 teacher_id 不自动映射新账号，课程分配必须通过管理 API 显式处理。
+已有课程 teacher_id 不自动映射新账号，课程分配需通过课程管理页面或管理 API 显式处理。
 
 常用错误：400 INVALID_INPUT、401 UNAUTHENTICATED/INVALID_CREDENTIALS、403 FORBIDDEN/CSRF_REJECTED、
 404 ACCOUNT_NOT_FOUND/COURSE_NOT_FOUND、409 USERNAME_EXISTS/LAST_ADMIN/ROLE_IN_USE、
@@ -252,11 +252,11 @@ node --test tests/js/board.test.cjs tests/js/config.test.cjs tests/js/evaluate.t
 | GET /api/admin/config | values、ranges、units；PATCH为顶层epsilon/k/epsilonTotal |
 | GET /api/admin/audit | 用户名、中文动作、Asia/Shanghai时间及独立courses筛选项 |
 
-页面的USE_MOCK默认为false，登录使用真实账号，Cookie会话和按角色跳转由真实HTTP回归覆盖。Mock仍可手动启用，其模拟凭证与真实库互不关联。导出API已实现，但看板按钮仍禁用；全部页面边缘交互尚未验收。
+页面的USE_MOCK默认为false，登录使用真实账号，Cookie会话和按角色跳转由真实HTTP回归覆盖。Mock仍可手动启用，其模拟凭证与真实库互不关联；教师看板和侧栏独立入口均可导出已发布快照，Mock不支持文件导出。全部页面边缘交互尚未验收。
 
 ## 12. 课程与评价码管理（第2b片）
 
-管理员先创建启用的teacher账号，再调用POST /api/admin/courses，JSON字段为course_id/name/teacher_id/term，可选closes_at（UTC Unix秒）和dimensions=[{name,weight}]。
+管理员可在课程页面创建课程并发码，也可通过API操作。GET /api/admin/courses仅允许管理员读取课程元信息、截止时间和维度，不返回评价码。创建前须有启用的teacher账号；POST /api/admin/courses的JSON字段为course_id/name/teacher_id/term，可选closes_at（UTC Unix秒）和dimensions=[{name,weight}]。
 course_id允许1–64位英文字母、数字、点、短横线、下划线；课程名至多200、学期至多100字符。默认窗口7天，默认三个等权维度：教学内容/教学方法/考核方式。
 维度数量1–10、名称唯一、正权重合计为1；不支持在已有课程中隐式更换维度。PATCH支持name/teacher_id/term/closes_at，closes_at=0立即关闭。
 发码POST /api/admin/courses/<id>/evaluation-codes，JSON为count（1–1000）与可选expires_at（不晚于课程截止）。返回codes数组，每码128位熵、32位小写十六进制，仅响应可得明文，数据库只留SHA256摘要。
@@ -275,7 +275,7 @@ course_id允许1–64位英文字母、数字、点、短横线、下划线；�
 
 教师GET /api/courses/<id>/statistics必须有statistics:own且当前仍拥有课程；管理员、审计员不能借课程管理权限读取结果。
 默认epsilon=0.1、k=5、每课总预算4.0，均取自privacy_policy；管理员可通过配置API修改。
-样本不足返回200 unpublished，包含sample/threshold/shortfall/charged=false，无评分或文本结果。
+样本不足且没有已发布快照时返回200 unpublished，包含sample/threshold/shortfall/charged=false，无评分或文本结果；已有快照时继续返回最后一次发布。
 已发布结果包含publicationId、charged以及前端所需的interval/spread/distinguishable/budgetExhausted。
 缓存键为课程、course_state.data_version、privacy_policy.revision；相同键重读不采样、不扣费。
 新发布在同一BEGIN IMMEDIATE事务内验证权限、读取评价、条件扣预算、插入快照并留痕；失败整体回滚，并发首次查看只发布一次。

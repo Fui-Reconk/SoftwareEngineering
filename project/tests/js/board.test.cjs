@@ -43,7 +43,7 @@ async function render(data) {
 test('a budget refusal never tells an at-threshold course to collect more evaluations', async () => {
   const { elements } = await render({ state: 'unpublished', reason: 'budget_exhausted',
     sample: 5, threshold: 5, shortfall: 0, charged: false });
-  assert.match(elements.get('refusedTitle').textContent, /预算/);
+  assert.match(elements.get('refusedTitle').textContent, /预算不足/);
   assert.doesNotMatch(elements.get('refusedTitle').textContent, /还差/);
   assert.doesNotMatch(elements.get('refusedWhy').textContent, /没到/);
   assert.match(elements.get('refusedWhy').textContent, /管理员/);
@@ -63,7 +63,11 @@ test('the real histogram counts complete evaluations instead of individual dimen
     dimensions: [{ name: 'A', value: 3 }, { name: 'B', value: 3 }, { name: 'C', value: 3 }],
     distribution: [1, 2, 3, 4, 5].map((score) => ({ score, count: score === 3 ? 2 : 1 })),
     openText: { responses: 0, terms: [] }, publishedAt: '2026-10-27T12:00:00+08:00',
-    budgetExhausted: false });
+    budgetExhausted: true });
+  assert.match(elements.get('record').textContent, /预算不足以再次发布/);
+  assert.doesNotMatch(elements.get('record').textContent, /不会再更新/);
+  assert.match(elements.get('courseSub').textContent, /已发评价码 8 个/);
+  assert.doesNotMatch(elements.get('courseSub').textContent, /选课/);
   assert.equal(elements.get('ratingCount').textContent, '6 份有效评价');
   assert.equal(charts[0].unit, ' 份');
 });

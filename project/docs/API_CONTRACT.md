@@ -33,7 +33,7 @@
 
 `GET /api/courses/<course_id>/statistics`
 
-**拒绝不是错误响应。** 样本不足时返回 `200`，`state` 为 `unpublished`，字段如下：
+**拒绝不是错误响应。** 样本不足且没有已发布快照时返回 `200`，`state` 为 `unpublished`，字段如下：
 
 ```json
 { "state": "unpublished", "reason": "below_threshold",
@@ -60,9 +60,9 @@
 三条硬要求：
 - `interval`、`spread`、`distinguishable` **由后端算**。前端不重算差分隐私，两份实现迟早不一致。
 - 扣费按发布。重复查看命中发布缓存，返回同一份 `publishedAt` 与数值，不再扣预算、不再加噪。
-- 已有快照时，预算用完后仍是 `state: "published"`（返回最后一次发布）；`budgetExhausted` 为 `true`，页面在页脚说明「这份不会再更新」。没有任何历史快照时可以返回未发布，见下文。
+- 已有快照时，预算不足以再次发布仍是 `state: "published"`（返回最后一次发布）；`budgetExhausted` 为 `true`，页面在页脚提示当前预算不足以再次发布。没有任何历史快照时可以返回未发布，见下文。
 
-后端补充：published含publicationId（已发布快照标识）及charged（本请求是否新发布）。精确参与数不受差分隐私保护；interval是噪声误差界，模型假设见BACKEND.md第14节。若历史账本已耗尽却从未保存发布，则200 unpublished/reason=budget_exhausted，仍带sample/threshold/shortfall/charged=false。门槛升高也不会撤回已有公开结果。
+后端补充：published含publicationId（已发布快照标识）及charged（本请求是否新发布）；enrolled是该快照发布时已发行的评价码数量，不是学生名册人数。精确参与数不受差分隐私保护；interval是噪声误差界，模型假设见BACKEND.md第14节。若历史账本已耗尽却从未保存发布，则200 unpublished/reason=budget_exhausted，仍带sample/threshold/shortfall/charged=false。门槛升高也不会撤回已有公开结果。
 
 ### 2. 评价码校验（第 3 片）
 

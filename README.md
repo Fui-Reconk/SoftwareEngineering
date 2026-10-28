@@ -2,7 +2,7 @@
 
 TACES（Trusted Anonymous Course Evaluation System）是本仓库的课程项目：学生凭一次性评价码匿名评教，教师读取受样本门槛、差分隐私噪声与发布预算约束的统计结果。
 
-实现采用 Python 3.12+、Flask 和 SQLite。源码、页面、共享测试和测试数据工具位于 [`project/`](project/README.md)。当前后端业务接口已实现，Flask页面默认连接真实后端；看板导出按钮等剩余接入状态见项目README。
+实现采用 Python 3.12+、Flask 和 SQLite。源码、页面、共享测试和测试数据工具位于 [`project/`](project/README.md)。Flask 页面默认连接真实后端；管理员可管理课程和发放评价码，教师可查看统计并导出已发布快照，教职工可修改本人密码。
 
 ## 本机运行
 

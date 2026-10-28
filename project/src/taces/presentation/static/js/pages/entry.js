@@ -9,21 +9,24 @@
   const passwordLink = document.getElementById('entryPassword');
   const csrf = document.querySelector('meta[name="csrf-token"]');
   let busy = false;
+  let knownRole = null;
 
   async function go() {
     if (busy) return;
     busy = true;
     retry.hidden = true;
+    logout.hidden = true;
+    passwordLink.hidden = true;
     retry.disabled = true;
     logout.disabled = true;
     title.textContent = '正在进入工作区';
     note.textContent = '正在确认账号信息，请稍候。';
+    let role = null;
     try {
       const session = await window.API.get('/api/auth/me');
       csrf.content = session.csrf_token || '';
-      logout.hidden = false;
-      const role = session.account.role;
-      passwordLink.hidden = !['teacher', 'auditor'].includes(role);
+      role = session.account.role;
+      knownRole = role;
       if (role === 'admin') {
         window.location.replace('/admin/config');
         return;
@@ -39,6 +42,8 @@
           title.textContent = '还没有分配课程';
           note.textContent = '请联系管理员分配课程，完成后可重新检查。';
           retry.hidden = false;
+          logout.hidden = false;
+          passwordLink.hidden = false;
           return;
         }
         window.location.replace(`/teacher/${encodeURIComponent(result.courses[0].course_id)}`);
@@ -47,12 +52,16 @@
       window.location.replace('/login');
     } catch (failure) {
       if (failure.status === 401) {
+        knownRole = null;
         window.location.replace('/login?next=/workspace');
         return;
       }
       title.textContent = '暂时无法进入工作区';
       note.textContent = '账号或课程信息暂时取不到，请重试。';
       retry.hidden = false;
+      const recoveryRole = role || knownRole;
+      logout.hidden = !recoveryRole;
+      passwordLink.hidden = !['teacher', 'auditor'].includes(recoveryRole);
     } finally {
       busy = false;
       retry.disabled = false;

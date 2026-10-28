@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 
 {% block title %}结果看板 · TACES{% endblock %}
+{% block styles %}<link rel="stylesheet" href="{{ url_for('static', filename='css/board.css') }}">{% endblock %}
 
 {% block content %}
 <div class="board" id="board" data-course="{{ course_id }}">
@@ -11,10 +12,24 @@
     </div>
     <div class="title-actions">
       <span class="stamp-box" id="publishState" hidden></span>
-      <button class="btn" type="button" id="exportButton" disabled
-              title="导出接口尚未实现">导出 PDF</button>
+      <button class="btn" type="button" id="exportPdf" disabled>导出 PDF</button>
+      <button class="btn" type="button" id="exportCsv" disabled>导出 CSV</button>
     </div>
   </div>
+
+  <details class="history-export" id="historyExport" hidden>
+    <summary>导出指定历史快照</summary>
+    <p class="caption">输入以前导出文件名中的发布编号；导出不会重新发布或消耗预算。</p>
+    <div class="history-export-controls">
+      <label class="field"><span class="field-label">发布编号</span>
+        <input class="input" id="historyId" type="text" maxlength="32" autocomplete="off" spellcheck="false">
+      </label>
+      <button class="btn" type="button" id="historyPdf" disabled>导出 PDF</button>
+      <button class="btn" type="button" id="historyCsv" disabled>导出 CSV</button>
+    </div>
+    <p class="caption" id="currentPublication"></p>
+  </details>
+  <p class="form-error" id="exportError" role="alert" hidden></p>
 
   <section class="panel report" id="published" hidden>
     <div class="report-left">

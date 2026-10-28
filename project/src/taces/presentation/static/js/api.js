@@ -36,7 +36,7 @@ window.API = (() => {
     return value;
   }
 
-  async function fromServer(path, method, body) {
+  async function fromServer(path, method, body, binary = false) {
     const headers = { 'X-TACES-Request': '1' };
     if (body !== undefined) headers['Content-Type'] = 'application/json';
     // 学生端的写接口没有会话可绑 CSRF（见 API_CONTRACT.md），没 token 就不发这个头
@@ -55,8 +55,8 @@ window.API = (() => {
       throw new APIError(0, 'NETWORK_ERROR', '连不上服务，检查网络后重试。');
     }
 
-    const payload = await response.json().catch(() => ({}));
     if (!response.ok) {
+      const payload = await response.json().catch(() => ({}));
       const error = payload.error || {};
       throw new APIError(
         response.status,
@@ -64,6 +64,14 @@ window.API = (() => {
         error.message || '请求失败，请稍后重试。',
       );
     }
+    if (binary) {
+      const blob = await response.blob();
+      if (binary !== 'metadata') return blob;
+      const disposition = response.headers.get('Content-Disposition') || '';
+      const match = /(?:^|;)\s*filename="?(statistics-[0-9a-f]{32}\.(?:csv|pdf))"?\s*(?:;|$)/i.exec(disposition);
+      return { blob, filename: match ? match[1] : null };
+    }
+    const payload = await response.json().catch(() => ({}));
     return payload.data;
   }
 
@@ -76,6 +84,12 @@ window.API = (() => {
     APIError,
     request,
     get: (path) => request('GET', path),
+    download: (path) => USE_MOCK
+      ? Promise.reject(new APIError(501, 'MOCK_UNAVAILABLE', '模拟模式不支持导出，请连接实际服务。'))
+      : fromServer(path, 'GET', undefined, true),
+    downloadWithMetadata: (path) => USE_MOCK
+      ? Promise.reject(new APIError(501, 'MOCK_UNAVAILABLE', '模拟模式不支持导出，请连接实际服务。'))
+      : fromServer(path, 'GET', undefined, 'metadata'),
     post: (path, body) => request('POST', path, body),
     patch: (path, body) => request('PATCH', path, body),
   };

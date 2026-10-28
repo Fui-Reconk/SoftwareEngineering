@@ -69,13 +69,14 @@ def test_export_rejects_missing_snapshot_and_bad_options(staff):
 
 
 def test_csv_neutralizes_formula_cells_and_download_filename_is_safe(staff):
-    teacher, _ = published(staff, name="=SUM(1,2)", term="@malicious")
+    teacher, data = published(staff, name="=SUM(1,2)", term="@malicious")
     response = teacher.get("/api/courses/c1/export?format=csv")
     values = csv_values(response)
     assert values["courseTitle"] == "'=SUM(1,2)"
     assert values["term"] == "'@malicious"
     assert "SUM" not in response.headers["Content-Disposition"]
     assert "attachment;" in response.headers["Content-Disposition"]
+    assert f"statistics-{data['publicationId']}.csv" in response.headers["Content-Disposition"]
 
 
 def test_pdf_contains_chinese_and_exact_saved_numbers(staff):

@@ -13,6 +13,7 @@ async function render(data) {
   function node() {
     return { textContent: '', hidden: true, children: [],
       className: '', classList: { add() {} }, style: {},
+      addEventListener() {},
       append(...children) { this.children.push(...children); },
       appendChild(child) { this.children.push(child); } };
   }

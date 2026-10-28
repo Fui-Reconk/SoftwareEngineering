@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}导出快照 · TACES{% endblock %}
+{% block styles %}<link rel="stylesheet" href="{{ url_for('static', filename='css/board.css') }}">{% endblock %}
+{% block content %}
+<div class="title-row"><div>
+  <h1>导出快照</h1>
+  <p class="sub">直接下载已发布的结果，不会生成新统计或消耗隐私预算。</p>
+</div></div>
+<section class="export-page" aria-label="选择导出内容">
+  <p class="export-intro">选择课程后，可下载最近一次发布的结果；如需历史快照，请填写发布编号。</p>
+  <div id="exportForm" hidden>
+    <label class="field"><span class="field-label">课程</span>
+      <select class="input" id="exportCourse" required></select>
+    </label>
+    <label class="field"><span class="field-label">历史发布编号 <span class="caption">选填</span></span>
+      <input class="input" id="exportPublication" type="text" autocomplete="off" spellcheck="false" placeholder="32 位十六进制编号">
+      <span class="caption">留空下载最近一次发布。编号可从之前下载的文件或看板中找到。</span>
+    </label>
+    <div class="export-page-actions">
+      <button class="btn primary" type="button" id="exportLatestPdf">下载 PDF</button>
+      <button class="btn" type="button" id="exportLatestCsv">下载 CSV</button>
+    </div>
+  </div>
+  <p class="form-error" id="exportPageError" role="alert" hidden></p>
+  <button class="btn" type="button" id="exportRetry" hidden>重新加载课程</button>
+</section>
+{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='js/pages/exports.js') }}"></script>{% endblock %}

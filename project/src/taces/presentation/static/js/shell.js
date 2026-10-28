@@ -62,7 +62,8 @@
   function renderNavigation(role) {
     const destinations = role === 'admin'
       ? [['账号管理', '/admin/accounts'], ['课程管理', '/admin/courses'], ['隐私参数', '/admin/config'], ['查询留痕', '/admin/audit']]
-      : role === 'auditor' ? [['查询留痕', '/admin/audit']] : [];
+      : role === 'auditor' ? [['查询留痕', '/admin/audit']]
+        : role === 'teacher' ? [['导出快照', '/teacher/exports/history']] : [];
     staffNav.textContent = '';
     destinations.forEach(([label, href]) => {
       const item = document.createElement('a');

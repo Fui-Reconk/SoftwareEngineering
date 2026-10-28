@@ -6,6 +6,8 @@
   const f = window.Charts.fmt;
   const board = document.getElementById('board');
   const code = board.dataset.course;
+  let publicationId = null;
+  let exporting = false;
 
   const el = (id) => document.getElementById(id);
 
@@ -36,9 +38,15 @@
 
     const spread = f.dec(2)(data.spread);
     const interval = f.dec(2)(data.interval);
-    setText('finding', data.distinguishable
-      ? `三个维度相差 ${spread} 分，大于 ±${interval} 的噪声区间，最高与最低的差别不是噪声。`
-      : `三个维度相差 ${spread} 分，落在 ±${interval} 的噪声之内，这一学期分不出哪个更弱。`);
+    setText('finding', data.dimensions.length === 1
+      ? '只有一个评价维度，无法进行维度间比较。'
+      : data.distinguishable
+        ? `${data.dimensions.length} 个维度最高与最低相差 ${spread} 分，噪声区间不重叠。`
+        : `${data.dimensions.length} 个维度最高与最低相差 ${spread} 分，±${interval} 的噪声区间重叠。`);
+    publicationId = /^[a-f0-9]{32}$/i.test(data.publicationId || '') ? data.publicationId : null;
+    el('historyExport').hidden = !publicationId;
+    if (publicationId) setText('currentPublication', `当前发布编号：${publicationId}`);
+    updateExportControls();
 
     // 先显示再画：容器还 hidden 时量不到宽度，SVG 会画成空的。
     el('published').hidden = false;
@@ -77,6 +85,61 @@
       ? `发布于 ${stamp(data.publishedAt)} · 预算已用完，这份不会再更新`
       : `发布于 ${stamp(data.publishedAt)}`);
   }
+
+  function updateExportControls() {
+    el('exportPdf').disabled = !publicationId || exporting;
+    el('exportCsv').disabled = !publicationId || exporting;
+    el('historyPdf').disabled = !publicationId || exporting;
+    el('historyCsv').disabled = !publicationId || exporting;
+  }
+
+  async function download(format, target = publicationId) {
+    if (!publicationId || exporting) return;
+    exporting = true;
+    updateExportControls();
+    const error = el('exportError');
+    error.hidden = true;
+    try {
+      const params = new URLSearchParams({ format, publication: target });
+      const blob = await window.API.download(`/api/courses/${encodeURIComponent(code)}/export?${params}`);
+      const url = window.URL.createObjectURL(blob);
+      try {
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `statistics-${target}.${format}`;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+      } finally {
+        window.setTimeout(() => window.URL.revokeObjectURL(url), 1000);
+      }
+    } catch (failure) {
+      if (failure.status === 401) {
+        window.location.replace(`/login?next=${encodeURIComponent(window.location.pathname)}`);
+      } else {
+        error.textContent = failure.message || '导出失败，请稍后重试。';
+        error.hidden = false;
+      }
+    } finally {
+      exporting = false;
+      updateExportControls();
+    }
+  }
+
+  function downloadHistory(format) {
+    const target = el('historyId').value.trim().toLowerCase();
+    if (!/^[a-f0-9]{32}$/.test(target)) {
+      el('exportError').textContent = '请输入 32 位十六进制发布编号。';
+      el('exportError').hidden = false;
+      return;
+    }
+    return download(format, target);
+  }
+
+  el('historyPdf').addEventListener('click', () => downloadHistory('pdf'));
+  el('historyCsv').addEventListener('click', () => downloadHistory('csv'));
+  el('exportPdf').addEventListener('click', () => download('pdf'));
+  el('exportCsv').addEventListener('click', () => download('csv'));
 
   function drawWords(openText) {
     if (!openText || !openText.terms || openText.terms.length === 0) return;

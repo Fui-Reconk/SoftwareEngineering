@@ -140,3 +140,21 @@ def test_admin_course_page_provides_list_and_teacher_assignment(app):
     assert 'id="courseTeacher"' in body
     assert re.search(r'<dialog\b[^>]*id="courseDialog"', body)
     assert 'js/pages/courses.js' in body
+
+
+def test_board_offers_both_snapshot_export_formats(app):
+    body = app.test_client().get("/teacher/SE201-03").get_data(as_text=True)
+    assert 'id="exportPdf"' in body
+    assert 'id="exportCsv"' in body
+    assert 'id="exportError"' in body
+
+
+def test_snapshot_export_page_does_not_shadow_course_named_exports(app):
+    client = app.test_client()
+    response = client.get("/teacher/exports/history")
+    assert response.status_code == 200
+    body = response.get_data(as_text=True)
+    for control in ("exportCourse", "exportPublication", "exportLatestPdf", "exportLatestCsv"):
+        assert f'id="{control}"' in body
+    assert "js/pages/exports.js" in body
+    assert 'id="board"' in client.get("/teacher/exports").get_data(as_text=True)

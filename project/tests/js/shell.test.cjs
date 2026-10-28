@@ -106,7 +106,7 @@ test('teacher retains owned course navigation and its current course', async () 
     { course_id: 'mine', name: '我的课程' }, { course_id: 'another', name: '另一门课程' },
   ] });
   assert.deepEqual(view.requests, ['/api/auth/me', '/api/courses']);
-  assert.equal(view.elements.get('staffNav').hidden, true);
+  assert.deepEqual(view.elements.get('staffNav').children.map(link => link.href), ['/teacher/exports/history']);
   assert.equal(view.elements.get('courseSection').hidden, false);
   const links = view.elements.get('courseList').children;
   assert.deepEqual(links.map((link) => link.href), ['/teacher/mine', '/teacher/another']);
@@ -155,4 +155,12 @@ test('resizing an open mobile drawer to desktop clears the backdrop', async () =
   view.resize(1440);
   assert.equal(view.elements.get('backdrop').hidden, true);
   assert.equal(view.elements.get('menuToggle').attributes['aria-expanded'], 'false');
+});
+
+
+test('snapshot export is available in teacher navigation without opening a course board', async () => {
+  const view = await render('teacher', { pathname: '/teacher/exports/history' });
+  assert.deepEqual(view.requests, ['/api/auth/me', '/api/courses']);
+  assert.equal(view.elements.get('staffNav').children[0].textContent, '导出快照');
+  assert.equal(view.elements.get('staffNav').children[0].attributes['aria-current'], 'page');
 });

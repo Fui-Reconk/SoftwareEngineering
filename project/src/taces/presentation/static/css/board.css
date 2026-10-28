@@ -1,0 +1,19 @@
+/* 当前结果和按编号导出历史快照共用看板布局。 */
+.history-export { margin: 0 0 20px; }
+.history-export summary { cursor: pointer; color: #00635f; font-weight: 500; }
+.history-export .caption { margin-top: 8px; }
+.history-export-controls { display: flex; flex-wrap: wrap; align-items: end; gap: 8px; margin-top: 12px; }
+.history-export-controls .field { width: min(100%, 360px); gap: 6px; }
+.history-export-controls .btn { min-height: 40px; }
+#exportError { margin-bottom: 16px; }
+#currentPublication { overflow-wrap: anywhere; }
+
+.export-page { max-width: 620px; padding: 24px; background: var(--paper, #fff); border: 1px solid var(--border); border-radius: 8px; }
+.export-intro { margin-bottom: 20px; color: var(--muted); line-height: 1.6; }
+#exportForm { display: grid; gap: 18px; }
+#exportForm[hidden] { display: none; }
+.export-page-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.export-page-actions .btn { min-height: 40px; }
+#exportPageError { margin-top: 16px; }
+#exportRetry { margin-top: 12px; }
+@media (max-width: 480px) { .export-page { padding: 18px; } }

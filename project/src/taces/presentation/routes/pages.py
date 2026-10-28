@@ -27,6 +27,11 @@ def teacher_board(course_id: str):
     return render_template("teacher/board.html", shell="staff", course_id=course_id)
 
 
+@pages.get("/teacher/exports/history")
+def teacher_exports():
+    return render_template("teacher/exports.html", shell="staff")
+
+
 @pages.get("/student")
 @pages.get("/")
 def student_code():

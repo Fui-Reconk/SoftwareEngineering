@@ -62,8 +62,29 @@
         </label>
         <label class="field">
           <span class="field-label">学期</span>
-          <input class="input" id="courseTerm" type="text" maxlength="100" placeholder="例如：2026 秋季" required>
+          <select class="input" id="courseTerm" required></select>
         </label>
+        <p class="caption" id="courseTermLegacy" hidden></p>
+        <p class="caption" id="termCreateStatus" role="status" hidden></p>
+        <fieldset class="term-create-fields" id="termCreateFields" hidden disabled>
+          <div class="term-create-inputs">
+            <label class="field"><span class="field-label">年份</span>
+              <input class="input" id="termYear" type="number" min="1" max="9999" step="1" inputmode="numeric" required>
+            </label>
+            <label class="field"><span class="field-label">季节</span>
+              <select class="input" id="termSeason" required>
+                <option value="">请选择</option>
+                <option value="春">春季</option>
+                <option value="秋">秋季</option>
+              </select>
+            </label>
+          </div>
+          <p class="form-error" id="termCreateError" role="alert" hidden></p>
+          <div class="accounts-form-actions">
+            <button class="btn" type="button" id="termCreateButton">创建并选择学期</button>
+            <button class="btn ghost" type="button" id="termCreateCancel">返回选择</button>
+          </div>
+        </fieldset>
         <div class="field">
           <span class="field-label" id="courseClosesAtLabel">评价截止时间</span>
           {{ date_input('courseClosesAt', 'courseClosesAtLabel', true, 'courseClosesAtHint') }}

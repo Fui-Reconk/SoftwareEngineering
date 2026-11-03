@@ -126,7 +126,7 @@ with TemporaryDirectory(prefix='taces-page-login-') as directory:
         account = auth.create_account(token, username, password, role, username)
         if course:
             CourseService(db, auth).create(token, {'course_id':course,'name':course,
-                'teacher_id':account['user_id'],'term':'synthetic'})
+                'teacher_id':account['user_id'],'term':'2026秋'})
         if username == 'demo_disabled':
             auth.update_account(token, account['user_id'], {'is_active':False})
     http = make_server('127.0.0.1', 0, app)

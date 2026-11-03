@@ -8,8 +8,12 @@ from tests.workflow_support import PASSWORD, staff, create_course, login_role
 from tests.integration.test_statistics import seed_responses, publication_counts
 
 
-def published(staff, **changes):
+def published(staff, *, legacy_term=None, **changes):
     create_course(staff, **changes)
+    if legacy_term is not None:
+        # Historic databases may retain terms that new course input now rejects.
+        with staff["db"].transaction() as con:
+            con.execute("UPDATE main.course SET term=? WHERE course_id='c1'", (legacy_term,))
     seed_responses(staff)
     teacher, _ = login_role(staff)
     data = teacher.get("/api/courses/c1/statistics").json["data"]
@@ -74,14 +78,14 @@ def test_export_filename_preserves_valid_dots_in_teacher_name(staff, username):
     ("...", "...", "_..._..._teacher.csv"),
 ])
 def test_export_filename_preserves_dots_in_course_and_term(staff, course, term, expected):
-    teacher, data = published(staff, name=course, term=term)
+    teacher, data = published(staff, name=course, legacy_term=term)
     response = teacher.get("/api/courses/c1/export?format=csv")
     assert attachment_name(response) == expected
     assert csv_values(response)["publicationId"] == data["publicationId"]
 
 
 def test_export_filename_sanitizes_unsafe_characters(staff):
-    teacher, _ = published(staff, name="课程/实验\\A:*\r\n奇", term="2026|秋")
+    teacher, _ = published(staff, name="课程/实验\\A:*\r\n奇", legacy_term="2026|秋")
     response = teacher.get("/api/courses/c1/export?format=csv")
     assert attachment_name(response) == "课程 实验 A 奇_2026 秋_teacher.csv"
     assert "\r" not in response.headers["Content-Disposition"]
@@ -89,7 +93,7 @@ def test_export_filename_sanitizes_unsafe_characters(staff):
 
 
 def test_export_filename_limits_long_unicode_names_without_losing_extension(staff):
-    teacher, _ = published(staff, name="课" * 200, term="春" * 100)
+    teacher, _ = published(staff, name="课" * 200, legacy_term="春" * 100)
     response = teacher.get("/api/courses/c1/export?format=csv")
     name = attachment_name(response)
     assert name.startswith("课") and "_春" in name and name.endswith("_teacher.csv")
@@ -144,7 +148,7 @@ def test_export_rejects_missing_snapshot_and_bad_options(staff):
 
 
 def test_csv_neutralizes_formula_cells_and_download_filename_is_safe(staff):
-    teacher, data = published(staff, name="=SUM(1,2)", term="@malicious")
+    teacher, data = published(staff, name="=SUM(1,2)", legacy_term="@malicious")
     response = teacher.get("/api/courses/c1/export?format=csv")
     values = csv_values(response)
     assert values["courseTitle"] == "'=SUM(1,2)"

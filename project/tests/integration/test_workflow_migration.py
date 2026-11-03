@@ -17,7 +17,7 @@ def test_version_two_upgrades_without_changing_core_rows(tmp_path):
         connection.execute("INSERT INTO main.audit_log(log_id,actor,action) VALUES ('a','actor','old')")
         connection.execute("INSERT INTO identity.enroll_code VALUES (?, 'c1',0)", ("a"*64,))
     database.upgrade()
-    assert SCHEMA_VERSION == 4
+    assert SCHEMA_VERSION == 5
     database.check_ready()
     with database.read_current() as connection:
         assert tuple(connection.execute("SELECT * FROM main.course").fetchone()) == ("c1","old","t1","2026")

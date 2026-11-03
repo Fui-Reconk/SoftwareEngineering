@@ -11,7 +11,7 @@ import sqlite3
 from typing import Iterator
 
 
-SCHEMA_VERSION = 4
+SCHEMA_VERSION = 5
 CORE_TABLES = {
     "main": {"course", "dimension", "budget_ledger", "audit_log"},
     "identity": {"student", "enroll_code"},
@@ -21,11 +21,12 @@ VERSION_TWO_TABLES = {
     **CORE_TABLES,
     "identity": CORE_TABLES["identity"] | {"account", "auth_session", "login_throttle"},
 }
-TABLES = {
+VERSION_FOUR_TABLES = {
     **VERSION_TWO_TABLES,
     "main": VERSION_TWO_TABLES["main"] | {"course_state", "privacy_policy", "agg_result"},
     "identity": VERSION_TWO_TABLES["identity"] | {"code_state"},
 }
+TABLES = {**VERSION_FOUR_TABLES, "main": VERSION_FOUR_TABLES["main"] | {"academic_term"}}
 SCHEMA_DIR = Path(__file__).with_name("schema")
 
 
@@ -110,9 +111,10 @@ class Database:
         if len(set(versions.values())) != 1:
             raise StorageError("Database schema versions are incompatible across files")
         version = versions["main"]
-        if version not in (0, 1, 2, 3, SCHEMA_VERSION):
+        if version not in (0, 1, 2, 3, 4, SCHEMA_VERSION):
             raise StorageError("Database schema version is incompatible")
-        expected_tables = CORE_TABLES if version == 1 else (VERSION_TWO_TABLES if version == 2 else TABLES)
+        expected_tables = (CORE_TABLES if version == 1 else VERSION_TWO_TABLES if version == 2
+                           else VERSION_FOUR_TABLES if version in (3, 4) else TABLES)
         for schema, expected in expected_tables.items():
             actual = {
                 row[0]
@@ -157,11 +159,11 @@ class Database:
             # Keep schema validation and DDL under the same write lock.
             connection.execute("BEGIN IMMEDIATE")
             version = self._schema_version(connection, allow_empty=True)
-            if version in (1, 2, 3):
+            if version in (1, 2, 3, 4):
                 raise StorageError("Database schema requires an upgrade; run upgrade-db first")
             if version == 0:
                 self._execute_schema(
-                    connection, ("metadata.sql", "identity.sql", "evaluation.sql", "auth.sql", "workflow.sql", "account_names.sql")
+                    connection, ("metadata.sql", "identity.sql", "evaluation.sql", "auth.sql", "workflow.sql", "account_names.sql", "terms.sql")
                 )
             self._validate_schema(connection)
             connection.commit()
@@ -172,11 +174,13 @@ class Database:
             connection.execute("BEGIN IMMEDIATE")
             version = self._schema_version(connection)
             if version == 1:
-                self._execute_schema(connection, ("auth.sql", "workflow.sql", "account_names.sql"))
+                self._execute_schema(connection, ("auth.sql", "workflow.sql", "account_names.sql", "terms.sql"))
             elif version == 2:
-                self._execute_schema(connection, ("workflow.sql", "account_names.sql"))
+                self._execute_schema(connection, ("workflow.sql", "account_names.sql", "terms.sql"))
             elif version == 3:
-                self._execute_schema(connection, ("account_names.sql",))
+                self._execute_schema(connection, ("account_names.sql", "terms.sql"))
+            elif version == 4:
+                self._execute_schema(connection, ("terms.sql",))
             self._validate_schema(connection)
             connection.commit()
 

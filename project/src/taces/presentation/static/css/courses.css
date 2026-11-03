@@ -2,6 +2,9 @@
 .course-name, .course-identifier { display: block; }
 .course-identifier { margin-top: 4px; color: var(--muted); font-size: var(--fs-small); }
 .courses-account-link { margin-top: -10px; justify-self: start; }
+.accounts-form .term-create-fields { gap: 12px; padding: 12px; border-radius: 8px; background: var(--raised); }
+.term-create-inputs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.term-create-fields .btn { min-height: 40px; }
 @media (max-width: 480px) {
   .courses-table th:first-child, .courses-table td:first-child { width: 35%; }
   .courses-table th:nth-child(2), .courses-table th:nth-child(3) { width: 22%; }

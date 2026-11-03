@@ -2,6 +2,7 @@
 
 import hashlib
 import math
+import re
 import secrets
 from uuid import uuid4
 
@@ -12,6 +13,12 @@ from taces.business.errors import ServiceError
 
 
 DEFAULT_DIMENSIONS = ("教学内容", "教学方法", "考核方式")
+
+
+def term_value(value):
+    if not isinstance(value, str) or not re.fullmatch(r"(?!0000)[0-9]{4}[春秋]", value):
+        raise invalid("学期须由四位年份和春或秋组成，例如2026秋。")
+    return value
 
 
 def dimensions_value(value):
@@ -36,6 +43,31 @@ class CourseService:
     def __init__(self, database, auth):
         self.database = database
         self.auth = auth
+
+    @staticmethod
+    def _register_term(connection, actor, term):
+        inserted = connection.execute("INSERT OR IGNORE INTO main.academic_term (term) VALUES (?)", (term,)).rowcount == 1
+        if inserted:
+            write_audit(connection, actor["user_id"], "term.create:" + term)
+        return inserted
+
+    def list_terms(self, token):
+        with self.auth._operation(token, "terms.manage.list") as (connection, actor):
+            require_permission(actor, "courses:manage")
+            return [row[0] for row in connection.execute(
+                "SELECT term FROM main.academic_term ORDER BY substr(term,1,4) DESC, "
+                "CASE substr(term,5,1) WHEN '秋' THEN 0 ELSE 1 END"
+            )]
+
+    def create_term(self, token, body):
+        with self.auth._operation(token, "terms.create", write=True) as (connection, actor):
+            require_permission(actor, "courses:manage")
+            fields(body, {"year", "season"})
+            year = integer(body["year"], 1, 9999)
+            if body["season"] not in ("春", "秋"):
+                raise invalid("学期只能选择春或秋。")
+            term = f"{year:04d}{body['season']}"
+            return {"term": term, "created": self._register_term(connection, actor, term)}
 
     @staticmethod
     def _teacher(connection, teacher_id):
@@ -76,12 +108,13 @@ class CourseService:
             fields(body, {"course_id", "name", "teacher_id", "term"}, {"dimensions", "closes_at"})
             course_id = identifier(body["course_id"])
             name = text_value(body["name"])
-            term = text_value(body["term"], maximum=100)
+            term = term_value(body["term"])
             teacher_id = self._teacher(connection, body["teacher_id"])
             dimensions = dimensions_value(body.get("dimensions"))
             closes_at = integer(body.get("closes_at", now() + 7 * 86400))
             if connection.execute("SELECT 1 FROM main.course WHERE course_id=?", (course_id,)).fetchone():
                 raise ServiceError(409, "COURSE_EXISTS", "课程标识已存在。")
+            self._register_term(connection, actor, term)
             connection.execute("INSERT INTO main.course VALUES (?,?,?,?)", (course_id, name, teacher_id, term))
             connection.executemany("INSERT INTO main.dimension VALUES (?,?,?,?)",
                                    [(uuid4().hex, course_id, label, weight) for label, weight in dimensions])
@@ -98,8 +131,11 @@ class CourseService:
                 raise invalid()
             course = course_row(connection, course_id)
             name = text_value(body.get("name", course["name"]))
-            term = text_value(body.get("term", course["term"]), maximum=100)
+            term_changed = "term" in body and body["term"] != course["term"]
+            term = term_value(body["term"]) if term_changed else course["term"]
             teacher_id = self._teacher(connection, body.get("teacher_id", course["teacher_id"]))
+            if term_changed:
+                self._register_term(connection, actor, term)
             connection.execute("UPDATE main.course SET name=?,teacher_id=?,term=? WHERE course_id=?", (name, teacher_id, term, course_id))
             if "closes_at" in body:
                 connection.execute(

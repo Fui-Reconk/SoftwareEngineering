@@ -265,7 +265,7 @@ def generate_dataset(output, *, seed=SEED, performance_rows=10000):
     for cid, name, count, pattern, text_pattern in specs:
         teacher = accounts["other_teacher" if cid == "foreign" else "teacher"]
         body = {"course_id": cid, "name": name, "teacher_id": teacher["user_id"],
-                "term": "2026秋（合成演示）", "closes_at": deadline}
+                "term": "2026秋", "closes_at": deadline}
         if cid == "weighted":
             body["dimensions"] = [{"name": n, "weight": w} for n, w in zip(DEFAULT_DIMENSIONS, [.7, .2, .1])]
         elif cid in {"one_dimension", "ten_dimensions"}:

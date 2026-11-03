@@ -19,6 +19,14 @@
   const courseId = byId('courseId');
   const name = byId('courseName');
   const term = byId('courseTerm');
+  const termLegacy = byId('courseTermLegacy');
+  const termFields = byId('termCreateFields');
+  const termYear = byId('termYear');
+  const termSeason = byId('termSeason');
+  const termError = byId('termCreateError');
+  const termStatus = byId('termCreateStatus');
+  const termCreate = byId('termCreateButton');
+  const termCancel = byId('termCreateCancel');
   const closesAt = byId('courseClosesAt');
   const useCustom = byId('courseUseCustom');
   const dimensionCreate = byId('courseDimensionCreate');
@@ -50,12 +58,16 @@
   const codeDownload = byId('codeDownload');
   const codeSaved = byId('codeSaved');
   const PAGE_SIZE = 100;
+  const NEW_TERM = '__new__';
+  const LEGACY_TERM = '__legacy__';
   let session;
   let accounts = [];
+  let terms = [];
   let selected = null;
   let rowButtons = [];
   let loading = false;
   let saving = false;
+  let creatingTerm = false;
   let issuing = false;
   let loaded = false;
   let initialDeadline = '';
@@ -64,9 +76,11 @@
   let issuedCodes = [];
   let codesSaved = true;
   let codeWindowClosed = true;
+  let lastTerm = '';
+  let termBeforeNew = '';
 
   function updateControls() {
-    const busy = loading || saving || issuing;
+    const busy = loading || saving || issuing || creatingTerm;
     create.disabled = busy || !loaded;
     fields.disabled = busy;
     close.disabled = busy;
@@ -74,8 +88,112 @@
     codeFields.disabled = busy;
     codeClose.disabled = busy;
     codeIssue.disabled = busy || codeWindowClosed;
+    termCreate.disabled = busy;
+    termCancel.disabled = busy;
     rowButtons.forEach((button) => { button.disabled = busy || !loaded; });
   }
+
+  function canonicalTerm(value) {
+    return typeof value === 'string' && /^(?!0000)[0-9]{4}[春秋]$/.test(value);
+  }
+
+  function updateLegacyHint() {
+    const legacy = selected && !canonicalTerm(selected.term) && term.value === LEGACY_TERM;
+    termLegacy.textContent = legacy ? '旧学期将保留；如需调整，请选择或新建规范学期。' : '';
+    termLegacy.hidden = !legacy;
+  }
+
+  function showNewTerm(show) {
+    termFields.hidden = !show;
+    termFields.disabled = !show;
+    termError.hidden = true;
+  }
+
+  function populateTerms(value = '') {
+    term.textContent = '';
+    const addOption = (optionValue, label, disabled = false) => {
+      const option = document.createElement('option');
+      option.value = optionValue;
+      option.textContent = label;
+      option.disabled = disabled;
+      term.appendChild(option);
+    };
+    addOption('', '请选择学期', true);
+    if (selected && !canonicalTerm(selected.term)) {
+      addOption(LEGACY_TERM, `${selected.term || '未设置'}（旧学期）`);
+    } else if (selected && !terms.includes(selected.term)) {
+      addOption(selected.term, selected.term);
+    }
+    terms.forEach((item) => addOption(item, item));
+    addOption(NEW_TERM, '＋新建学期');
+    term.value = selected && !canonicalTerm(selected.term) && value === selected.term ? LEGACY_TERM : value;
+    lastTerm = term.value;
+    showNewTerm(false);
+    updateLegacyHint();
+  }
+
+  term.addEventListener('change', () => {
+    termStatus.hidden = true;
+    formError.hidden = true;
+    if (term.value === NEW_TERM) {
+      termBeforeNew = lastTerm;
+      termYear.value = String(new Date().getFullYear());
+      termSeason.value = '';
+      showNewTerm(true);
+      termYear.focus();
+    } else {
+      lastTerm = term.value;
+      showNewTerm(false);
+    }
+    updateLegacyHint();
+  });
+
+  termCancel.addEventListener('click', () => {
+    if (creatingTerm) return;
+    populateTerms(termBeforeNew);
+    term.focus();
+  });
+
+  termCreate.addEventListener('click', async () => {
+    if (!dialog.open || !loaded || creatingTerm || saving || term.value !== NEW_TERM) return;
+    termError.hidden = true;
+    const yearText = termYear.value.trim();
+    const year = Number(yearText);
+    const season = termSeason.value;
+    if (!/^[0-9]{1,4}$/.test(yearText) || year < 1 || year > 9999 || !['春', '秋'].includes(season)) {
+      termError.textContent = '请选择春季或秋季，并填写 1–9999 的年份。';
+      termError.hidden = false;
+      return;
+    }
+    creatingTerm = true;
+    updateControls();
+    let focusTerm = false;
+    try {
+      const result = await window.API.post('/api/admin/terms', { year, season });
+      const expected = `${String(year).padStart(4, '0')}${season}`;
+      if (!result || result.term !== expected || typeof result.created !== 'boolean') {
+        throw new Error('学期结果无法确认，请重试。');
+      }
+      terms = [...new Set([...terms, result.term])].sort((a, b) =>
+        b.slice(0, 4).localeCompare(a.slice(0, 4)) || (a.endsWith('秋') ? -1 : 1));
+      populateTerms(result.term);
+      termStatus.textContent = result.created ? `已创建并选择 ${result.term}。` : `已选择已有学期 ${result.term}。`;
+      termStatus.hidden = false;
+      focusTerm = true;
+    } catch (failure) {
+      if (failure.status === 401) {
+        loginAgain();
+      } else {
+        termError.textContent = failure.status === 0
+          ? '暂时无法确认是否创建成功，可重试。' : failure.message || '创建学期失败，请重试。';
+        termError.hidden = false;
+      }
+    } finally {
+      creatingTerm = false;
+      updateControls();
+      if (focusTerm) term.focus();
+    }
+  });
 
   function loginAgain() {
     window.location.replace('/login?next=%2Fadmin%2Fcourses');
@@ -227,11 +345,15 @@
     loadingNote.hidden = false;
     updateControls();
     try {
-      const [coursePage, accountPage] = await Promise.all([
-        window.API.get('/api/admin/courses'), fetchAccounts(),
+      const [coursePage, accountPage, termPage] = await Promise.all([
+        window.API.get('/api/admin/courses'), fetchAccounts(), window.API.get('/api/admin/terms'),
       ]);
       if (!coursePage || !Array.isArray(coursePage.courses)) throw new Error('课程列表格式有误，请重试。');
+      if (!termPage || !Array.isArray(termPage.terms) || !termPage.terms.every(canonicalTerm)) {
+        throw new Error('学期列表格式有误，请重试。');
+      }
       accounts = accountPage;
+      terms = [...new Set(termPage.terms)];
       rows.textContent = '';
       rowButtons = [];
       coursePage.courses.forEach(addRow);
@@ -243,7 +365,7 @@
         loginAgain();
         return false;
       }
-      listError.textContent = failure.message || '课程或教师列表取不到，请重试。';
+      listError.textContent = failure.message || '课程、教师或学期列表取不到，请重试。';
       listError.hidden = false;
       retry.hidden = false;
       return false;
@@ -259,13 +381,14 @@
   }
 
   function openForm(course) {
-    if (!loaded || loading || saving || !session || session.account.role !== 'admin') return;
+    if (!loaded || loading || saving || creatingTerm || !session || session.account.role !== 'admin') return;
     selected = course || null;
     title.textContent = selected ? '编辑课程' : '新建课程';
     courseId.value = selected ? selected.course_id : '';
     courseId.readOnly = Boolean(selected);
     name.value = selected ? selected.name : '';
-    term.value = selected ? selected.term : '';
+    populateTerms(selected ? selected.term : '');
+    termStatus.hidden = true;
     initialDeadline = selected ? inputTime(selected.closes_at) : '';
     closesAt.value = initialDeadline;
     window.TacesDatePicker?.sync(closesAt);
@@ -318,7 +441,7 @@
 
   form.addEventListener('submit', async (event) => {
     event.preventDefault();
-    if (!dialog.open || saving || loading || !loaded || !session || session.account.role !== 'admin') return;
+    if (!dialog.open || saving || creatingTerm || loading || !loaded || !session || session.account.role !== 'admin') return;
     formError.hidden = true;
     if (!activeTeachers().some((account) => account.user_id === teacher.value)) {
       formError.textContent = '请选择一位启用的教师。';
@@ -327,11 +450,16 @@
     }
     let request;
     try {
+      const legacySelected = selected && !canonicalTerm(selected.term) && term.value === LEGACY_TERM;
+      const chosenTerm = legacySelected ? selected.term : term.value;
+      if (!terms.includes(term.value) && !legacySelected && !(selected && term.value === selected.term)) {
+        throw new Error(term.value === NEW_TERM ? '请先创建并选择学期。' : '请选择有效学期。');
+      }
       const deadline = localTimestamp(closesAt.value);
       if (selected) {
         const changes = {};
         if (name.value.trim() !== selected.name) changes.name = name.value.trim();
-        if (term.value.trim() !== selected.term) changes.term = term.value.trim();
+        if (chosenTerm !== selected.term) changes.term = chosenTerm;
         if (teacher.value !== selected.teacher_id) changes.teacher_id = teacher.value;
         if (closesAt.value !== initialDeadline) {
           if (deadline === null) throw new Error('请填写截止时间；如需关闭评价，可设置过去的时间。');
@@ -341,7 +469,7 @@
         request = () => window.API.patch(`/api/admin/courses/${encodeURIComponent(selected.course_id)}`, changes);
       } else {
         const payload = { course_id: courseId.value.trim(), name: name.value.trim(),
-          term: term.value.trim(), teacher_id: teacher.value };
+          term: chosenTerm, teacher_id: teacher.value };
         if (deadline !== null) payload.closes_at = deadline;
         if (useCustom.checked) payload.dimensions = customDimensions();
         request = () => window.API.post('/api/admin/courses', payload);
@@ -507,10 +635,10 @@
   });
 
   create.addEventListener('click', () => openForm(null));
-  const dismissDialog = () => { if (!saving) dialog.close(); };
+  const dismissDialog = () => { if (!saving && !creatingTerm) dialog.close(); };
   cancel.addEventListener('click', dismissDialog);
   close.addEventListener('click', dismissDialog);
-  dialog.addEventListener('cancel', (event) => { if (saving) event.preventDefault(); });
+  dialog.addEventListener('cancel', (event) => { if (saving || creatingTerm) event.preventDefault(); });
   retry.addEventListener('click', loadData);
 
   window.SHELL.ready.then((result) => {

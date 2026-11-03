@@ -13,6 +13,19 @@ def course_service():
     return CourseService(current_app.extensions["taces_database"], current_app.extensions["taces_auth"])
 
 
+@courses_admin.get("/admin/terms")
+@protected()
+def list_terms():
+    return jsonify(data={"terms": course_service().list_terms(token())})
+
+
+@courses_admin.post("/admin/terms")
+@protected(write=True)
+def create_term():
+    result = course_service().create_term(token(), payload({"year", "season"}))
+    return jsonify(data=result), 201 if result["created"] else 200
+
+
 @courses_admin.get("/admin/courses")
 @protected()
 def list_courses_for_management():

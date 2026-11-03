@@ -12,13 +12,13 @@
 python -m flask --app run.py init-db
 ```
 
-已有 v1/v2/v3 数据库先停止服务并备份三个库文件，再显式执行：
+已有 v1/v2/v3/v4 数据库先停止服务并备份三个库文件，再显式执行：
 
 ```bash
 python -m flask --app run.py upgrade-db
 ```
 
-当前三库结构版本为 v4，共15张表。v1升级会补齐三个账号表与四个工作流表；v2升级补齐工作流表，v3升级给账号表增加姓名字段，保留已有账号、密码和数据。旧姓名留空，由管理员补齐；不会将职工号当作姓名。旧评价窗口与旧码在迁移时默认关闭，须由管理员重新配置窗口并发行新码。DDL 和版本更新同事务提交，失败整体回滚。
+当前三库结构版本为 v5，共16张表。v1升级会补齐三个账号表与四个工作流表；v2升级补齐工作流表，v3升级给账号表增加姓名字段，v4升级增加可复用学期表，保留已有账号、密码和数据。旧姓名留空，由管理员补齐；不会将职工号当作姓名。旧评价窗口与旧码在迁移时默认关闭，须由管理员重新配置窗口并发行新码。DDL 和版本更新同事务提交，失败整体回滚。
 `init-db` 遇到旧版本会拒绝；重复初始化当前版本、重复升级当前版本均保留数据。
 混合版本、未知版本或缺失核心表需要先排查，不能靠删库重建处理。
 
@@ -66,6 +66,8 @@ JSON 接口拒绝未知字段和错误类型；账号响应不含密码散列或
 | `PATCH /api/admin/accounts/<user_id>` | 管理员 Cookie + CSRF 头；JSON：`username`、`display_name`、`role`、布尔 `is_active`、`password` 中至少一项 | `account` |
 | `GET /api/courses` | 管理员或教师 Cookie | `courses`，教师仅看到本人课程 |
 | `GET /api/admin/courses` | 管理员 Cookie | `courses`，含截止时间和维度设置 |
+| `GET /api/admin/terms` | 管理员 Cookie | `terms`，可复用的春/秋学期 |
+| `POST /api/admin/terms` | 管理员 Cookie + CSRF 头；JSON：`year`、`season` | 新建或复用学期，返回 `term` 和 `created` |
 | `GET /api/courses/<course_id>` | 管理员或该课程教师 Cookie | `course`，不存在返回 404 |
 
 `account` 包含 `user_id`、登录账号 `username`、姓名 `display_name`、`role`、布尔 `is_active` 和整数 `created_at`；迁移的账号在补齐姓名前 `display_name` 为空字符串。

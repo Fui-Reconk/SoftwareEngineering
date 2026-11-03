@@ -30,9 +30,11 @@ function node() {
 async function render({ role = 'admin', accounts = [activeTeacher, secondTeacher, disabledTeacher],
   courses = [{ course_id: 'c1', name: '数据结构', teacher_id: 'teacher-1', term: '2026秋',
     closes_at: Math.floor(Date.now() / 1000) + 86400, dimensions: [{ name: '内容', weight: 1 }] }],
-  failure = null, saveFailure = null, postWait = null, reloadFailure = null, codeFailure = null } = {}) {
+  terms = ['2026秋'], failure = null, saveFailure = null, postWait = null, reloadFailure = null,
+  codeFailure = null, termFailure = null, termWait = null } = {}) {
   assert.ok(existsSync(script), 'course management page script is missing');
   let data = courses.map(course => ({ ...course }));
+  const termData = [...terms];
   const elements = new Map();
   const requests = [];
   const redirects = [];
@@ -49,6 +51,7 @@ async function render({ role = 'admin', accounts = [activeTeacher, secondTeacher
       requests.push({ method: 'GET', route });
       if (failure) { const error = failure; failure = null; throw error; }
       if (route === '/api/courses' || route === '/api/admin/courses') return { courses: data.map(course => ({ ...course })) };
+      if (route === '/api/admin/terms') return { terms: [...termData] };
       if (route.startsWith('/api/admin/accounts?')) {
         const params = new URLSearchParams(route.split('?')[1]);
         const offset = Number(params.get('offset'));
@@ -59,6 +62,14 @@ async function render({ role = 'admin', accounts = [activeTeacher, secondTeacher
     },
     async post(route, body) {
       requests.push({ method: 'POST', route, body: JSON.parse(JSON.stringify(body)) });
+      if (route === '/api/admin/terms') {
+        if (termFailure) throw termFailure;
+        if (termWait) await termWait;
+        const term = `${String(body.year).padStart(4, '0')}${body.season}`;
+        const created = !termData.includes(term);
+        if (created) termData.push(term);
+        return { term, created };
+      }
       if (route.endsWith('/evaluation-codes')) {
         if (codeFailure) throw codeFailure;
         if (postWait) await postWait;
@@ -118,6 +129,117 @@ test('admin can create a course assigned to an active teacher', async () => {
   assert.equal(view.elements.get('courseDialog').open, false);
   assert.equal(view.elements.get('courseRows').children.length, 2);
   assert.equal(view.elements.get('courseSaved').hidden, false);
+});
+
+test('admin can create a reusable term from the course selector', async () => {
+  const view = await render();
+  await view.click('courseCreate');
+  const term = view.elements.get('courseTerm');
+  assert.deepEqual(term.children.map(option => option.value), ['', '2026秋', '__new__']);
+  term.value = '__new__';
+  term.events.change();
+  assert.equal(view.elements.get('termCreateFields').hidden, false);
+  view.elements.get('termYear').value = '2029';
+  view.elements.get('termSeason').value = '春';
+  await view.click('termCreateButton');
+  assert.deepEqual(view.requests.find(item => item.route === '/api/admin/terms' && item.method === 'POST'), {
+    method: 'POST', route: '/api/admin/terms', body: { year: 2029, season: '春' },
+  });
+  assert.equal(term.value, '2029春');
+  assert.equal(view.elements.get('termCreateFields').hidden, true);
+  await view.click('courseCancel');
+  await view.click('courseCreate');
+  assert.ok(term.children.some(option => option.value === '2029春'));
+});
+
+test('term creation rejects an invalid year or missing season without sending a request', async () => {
+  const view = await render();
+  await view.click('courseCreate');
+  const term = view.elements.get('courseTerm');
+  term.value = '__new__';
+  term.events.change();
+  view.elements.get('termYear').value = '0';
+  view.elements.get('termSeason').value = '春';
+  await view.click('termCreateButton');
+  assert.equal(view.requests.some(item => item.route === '/api/admin/terms' && item.method === 'POST'), false);
+  assert.equal(view.elements.get('termCreateError').hidden, false);
+  view.elements.get('termYear').value = '2028';
+  view.elements.get('termSeason').value = '';
+  await view.click('termCreateButton');
+  assert.equal(view.requests.some(item => item.route === '/api/admin/terms' && item.method === 'POST'), false);
+});
+
+test('a pending term creation cannot be repeated or dismissed', async () => {
+  let release;
+  const view = await render({ termWait: new Promise(resolve => { release = resolve; }) });
+  await view.click('courseCreate');
+  const term = view.elements.get('courseTerm');
+  term.value = '__new__';
+  term.events.change();
+  view.elements.get('termYear').value = '2030';
+  view.elements.get('termSeason').value = '秋';
+  const pending = view.click('termCreateButton');
+  await tick();
+  await view.click('termCreateButton');
+  await view.click('courseCancel');
+  assert.equal(view.elements.get('courseDialog').open, true);
+  assert.equal(view.requests.filter(item => item.route === '/api/admin/terms' && item.method === 'POST').length, 1);
+  release();
+  await pending;
+  assert.equal(term.value, '2030秋');
+});
+
+test('an interrupted term creation leaves the form available for retry', async () => {
+  const view = await render({ termFailure: { status: 0 } });
+  await view.click('courseCreate');
+  const term = view.elements.get('courseTerm');
+  term.value = '__new__';
+  term.events.change();
+  view.elements.get('termYear').value = '2030';
+  view.elements.get('termSeason').value = '秋';
+  await view.click('termCreateButton');
+  assert.match(view.elements.get('termCreateError').textContent, /无法确认.*重试/);
+  assert.equal(view.elements.get('termCreateFields').hidden, false);
+  assert.equal(view.elements.get('termCreateButton').disabled, false);
+});
+
+test('the course cannot be submitted while a new term has not been created', async () => {
+  const view = await render();
+  await view.click('courseCreate');
+  view.elements.get('courseId').value = 'new-course';
+  view.elements.get('courseName').value = '课程';
+  view.elements.get('courseTeacher').value = 'teacher-1';
+  const term = view.elements.get('courseTerm');
+  term.value = '__new__';
+  term.events.change();
+  await view.submit();
+  assert.equal(view.requests.some(item => item.route === '/api/admin/courses' && item.method === 'POST'), false);
+  assert.match(view.elements.get('courseFormError').textContent, /先创建/);
+});
+
+test('editing a legacy term keeps it unless the administrator selects a new term', async () => {
+  const view = await render({ courses: [{ course_id: 'c1', name: '旧课', teacher_id: 'teacher-1',
+    term: '2025-2026 第一学期', closes_at: 0, dimensions: [] }] });
+  editButton(view).events.click();
+  assert.equal(view.elements.get('courseTerm').value, '__legacy__');
+  assert.match(view.elements.get('courseTermLegacy').textContent, /旧学期/);
+  view.elements.get('courseName').value = '新课名';
+  await view.submit();
+  assert.deepEqual(view.requests.find(item => item.method === 'PATCH').body, { name: '新课名' });
+  editButton(view).events.click();
+  view.elements.get('courseTerm').value = '2026秋';
+  await view.submit();
+  assert.deepEqual(view.requests.filter(item => item.method === 'PATCH').at(-1).body, { term: '2026秋' });
+});
+
+test('editing an empty legacy term can preserve it while changing other fields', async () => {
+  const view = await render({ courses: [{ course_id: 'c1', name: '旧课', teacher_id: 'teacher-1',
+    term: '', closes_at: 0, dimensions: [] }] });
+  editButton(view).events.click();
+  assert.equal(view.elements.get('courseTerm').value, '__legacy__');
+  view.elements.get('courseName').value = '新课名';
+  await view.submit();
+  assert.deepEqual(view.requests.find(item => item.method === 'PATCH').body, { name: '新课名' });
 });
 
 test('editing a course transfers only the changed teacher and refreshes the list', async () => {
@@ -247,7 +369,7 @@ test('admin can create a course with a custom deadline and weighted dimensions',
   await view.click('courseCreate');
   view.elements.get('courseId').value = 'custom';
   view.elements.get('courseName').value = '课程';
-  view.elements.get('courseTerm').value = '秋';
+  view.elements.get('courseTerm').value = '2026秋';
   view.elements.get('courseTeacher').value = 'teacher-1';
   view.elements.get('courseClosesAt').value = '2027-01-05T12:00';
   view.elements.get('courseUseCustom').checked = true;
@@ -299,7 +421,7 @@ test('custom weights that do not total one are not sent', async () => {
   await view.click('courseCreate');
   view.elements.get('courseId').value = 'custom';
   view.elements.get('courseName').value = '课程';
-  view.elements.get('courseTerm').value = '秋';
+  view.elements.get('courseTerm').value = '2026秋';
   view.elements.get('courseTeacher').value = 'teacher-1';
   view.elements.get('courseUseCustom').checked = true;
   assert.equal(typeof view.elements.get('courseUseCustom').events.change, 'function');

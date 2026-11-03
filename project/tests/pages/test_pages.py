@@ -115,6 +115,14 @@ def test_config_page_names_three_parameters_and_their_scope(app):
     assert "每门课程用于发布统计的 ε 总量" in body
 
 
+def test_course_form_selects_or_creates_a_structured_term(app):
+    body = app.test_client().get('/admin/courses').get_data(as_text=True)
+    assert re.search(r'<select\b[^>]*id="courseTerm"[^>]*required', body)
+    assert re.search(r'<input\b[^>]*id="termYear"[^>]*type="number"', body)
+    assert re.search(r'<select\b[^>]*id="termSeason"', body)
+    assert 'id="termCreateButton"' in body
+
+
 def test_admin_account_page_provides_management_form_and_list(app):
     response = app.test_client().get("/admin/accounts")
     assert response.status_code == 200

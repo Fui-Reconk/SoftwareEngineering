@@ -21,9 +21,13 @@
 | `POST /api/auth/password` | 已有 | `{login_required: true}`；撤销本人全部会话 |
 | `GET /api/courses` | 已有 | `{courses: [{course_id, name, teacher_id, term}]}`，教师只看到本人的课 |
 | `GET /api/admin/courses` | 已有 | 管理员专用 `{courses: [{course_id, name, teacher_id, term, closes_at, dimensions: [{name, weight}]}]}`，不返回评价码 |
+| `GET /api/admin/terms` | 已有 | 管理员专用 `{terms: ["2027春", "2026秋"]}`，按年份倒序、同年秋季在前 |
+| `POST /api/admin/terms` | 已有 | 管理员与 CSRF；请求 `{year: 2026, season: "秋"}`，返回 `{term: "2026秋", created: true}`；已存在时 `created: false` |
 
 `account` 为 `{user_id, username, display_name, role, is_active, created_at}`；`username` 是职工号等登录账号，`display_name` 是姓名，旧账号未补齐时为空；`role` 取 `teacher` / `admin` / `auditor`。
 **审计员调不了 `GET /api/courses`**（`list_courses` 只放行 admin 与有 `courses:own` 的教师），页面不要对审计员发这个请求。
+
+学期采用自然年份 `0001`–`9999` 加 `春` 或 `秋`，例如 `2026秋`；新建和更改课程时服务端校验该格式，并将新值登记为可复用学期。新建学期返回 201，重复创建返回 200；学期即使未用于课程也会保留。历史课程的原学期和历史快照不会迁移改写；更新课程时可不传学期，或原样传回当前历史学期。
 
 ## 业务契约与实现状态
 
@@ -44,7 +48,7 @@
 
 ```json
 { "state": "published", "publicationId": "0123456789abcdef0123456789abcdef", "charged": true,
-  "courseCode": "SE201-03", "courseTitle": "数据结构", "term": "2025–2026 学年第二学期", "teacherName": "李砚秋",
+  "courseCode": "SE201-03", "courseTitle": "数据结构", "term": "2026春", "teacherName": "李砚秋",
   "responses": 235, "enrolled": 287, "publishedAt": "2026-06-30T10:13:00+08:00",
   "budgetExhausted": false,
   "pooledMean": 3.86, "interval": 3.48, "spread": 0.30, "distinguishable": false,
@@ -141,3 +145,5 @@ from/to支持上海本地YYYY-MM-DD日期和带时区ISO时间（最多六位小
 2026-10-27 · GET /api/courses / GET /api/admin/audit · 课程列表保持course_id/name/teacher_id/term；审计筛选courses为course_id/name，以用户最新同步为准，不添加code/title别名。
 
 2026-10-27 · 文档与实现对齐 · 补齐publicationId/charged、三维完整提交与五档分布示例，明确登录请求头、顶层配置请求及无历史快照预算耗尽例外；不更改API行为。
+
+2026-11-03 · 学期管理 · 新增管理员学期列表与新建接口；新课程及变更后的学期使用四位年份加春/秋，旧课程保持原值。

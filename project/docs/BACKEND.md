@@ -12,7 +12,7 @@
 | --- | --- | --- |
 | 工程底座，第 1 片 | 已实现应用工厂、配置、JSON 错误、健康检查、三库事务 | src/taces/presentation、config.py、data/database.py（相对 project/） |
 | 账号权限，第 2a 片 | 已实现登录、退出、改密、账号管理、角色与课程归属 | src/taces/business/auth、presentation/routes/auth.py（相对 project/） |
-| 数据库 | 当前 schema 版本为 4，三库共 15 张表 | data/database.py 的 SCHEMA_VERSION / TABLES |
+| 数据库 | 当前 schema 版本为 5，三库共 16 张表 | data/database.py 的 SCHEMA_VERSION / TABLES |
 | 课程与评价码，第 2b 片 | 已实现管理员课程创建/修改、教师分配、评价窗口与随机评价码批量生成 | 本文第12节 |
 | 匿名提交，第3片 | 已实现无会话验码与原子提交，不要求CSRF | business/submission/service.py、routes/submissions.py |
 | 统计发布，第4片 | 已实现阈值、向量噪声、发布缓存、预算原子扣费 | 本文第14节 |
@@ -119,10 +119,10 @@ metadata.db（main） + identity.db + evaluation.db
 | --- | --- | --- |
 | project/db/identity.db / identity | student、enroll_code、account、auth_session、login_throttle、code_state | 员工凭证和会话不进入评价库 |
 | project/db/evaluation.db / evaluation | rating、open_text | 不存学生标识、评价码、IP、精确提交时间 |
-| project/db/metadata.db / main | course、dimension、budget_ledger、audit_log、course_state、privacy_policy、agg_result | 课程、预算、审计元信息 |
+| project/db/metadata.db / main | course、dimension、budget_ledger、audit_log、course_state、privacy_policy、agg_result、academic_term | 学期、课程、预算、审计元信息 |
 
-SQL 位于 project/src/taces/data/schema/，版本以 SCHEMA_VERSION=4 为准。
-八张原有核心表、三张账号表及四张工作流支撑表，共15张。v4在员工账号表增加姓名列，评价数据的匿名边界不变。course_state保存截止时间与数据版本，code_state仅保存码摘要及过期时间，privacy_policy保存配置，agg_result保存不可变发布快照。
+SQL 位于 project/src/taces/data/schema/，版本以 SCHEMA_VERSION=5 为准。
+八张原有核心表、三张账号表、四张工作流支撑表及学期表，共16张。v4在员工账号表增加姓名列；v5增加可复用学期表，评价数据的匿名边界不变。course_state保存截止时间与数据版本，code_state仅保存码摘要及过期时间，privacy_policy保存配置，agg_result保存不可变发布快照。
 
 - rating 每维度一行，用随机 submission_id 将同份评价分组，同一份评价的维度不可重复。
 - open_text 通过 rating_id 关联其中一条评分，不将原文直接返回教师接口。
@@ -134,7 +134,7 @@ SQL 位于 project/src/taces/data/schema/，版本以 SCHEMA_VERSION=4 为准。
 - 版本与预期表名检查不是完整结构指纹、完整性检查或磁盘可写性证明。
 
 init-db 只为新库创建当前结构；当前版本可重复执行，保留数据。
-v1/v2/v3必须显式upgrade-db，保留现有数据并更新三库版本至4。旧账号姓名留空并由管理员补齐，不从登录账号推测真实姓名。v1/v2旧窗口与旧码默认关闭，需管理员明确重新配置并发行新码，不猜测旧教师ID到新账号的映射。未知/混合版本、缺失核心表拒绝接管。
+v1/v2/v3/v4必须显式upgrade-db，保留现有数据并更新三库版本至5。v5迁移将已有规范学期登记到学期表，其余历史学期原样保留；不推测学年与季节的对应关系。旧账号姓名留空并由管理员补齐，不从登录账号推测真实姓名。v1/v2旧窗口与旧码默认关闭，需管理员明确重新配置并发行新码，不猜测旧教师ID到新账号的映射。未知/混合版本、缺失核心表拒绝接管。
 DDL、版本号与事务内的数据改变一起回滚；失败可能留下空文件，但不能靠删库绕过迁移。
 
 ## 6. 事务、读取和审计边界
@@ -232,8 +232,8 @@ node --test tests/js/board.test.cjs tests/js/config.test.cjs tests/js/evaluate.t
 
 | 场景 | 当前行为 |
 | --- | --- |
-| 当前v3 + 有效会话 | 正常业务读取200，角色或资源归属不符403 |
-| 当前v3 + 无效会话 | 401 |
+| 当前v5 + 有效会话 | 正常业务读取200，角色或资源归属不符403 |
+| 当前v5 + 无效会话 | 401 |
 | 任一库未知/混合版本、缺预期表 | 业务读取与ready一致拒绝，503 DATABASE_NOT_READY |
 | 完整旧库 + 低层诊断读取 | 可读取以备份/复核，不能供当前业务继续使用 |
 | 结构校验失败 | 无隐式升级或文件重建，不新增业务行 |
@@ -257,7 +257,7 @@ node --test tests/js/board.test.cjs tests/js/config.test.cjs tests/js/evaluate.t
 ## 12. 课程与评价码管理（第2b片）
 
 管理员可在课程页面创建课程并发码，也可通过API操作。GET /api/admin/courses仅允许管理员读取课程元信息、截止时间和维度，不返回评价码。创建前须有启用的teacher账号；POST /api/admin/courses的JSON字段为course_id/name/teacher_id/term，可选closes_at（UTC Unix秒）和dimensions=[{name,weight}]。
-course_id允许1–64位英文字母、数字、点、短横线、下划线；课程名至多200、学期至多100字符。默认窗口7天，默认三个等权维度：教学内容/教学方法/考核方式。
+course_id允许1–64位英文字母、数字、点、短横线、下划线；课程名至多200字符。新学期为四位自然年份加春/秋，如2026秋；课程管理下拉框可选择或新建学期。`GET /api/admin/terms` 列表和 `POST /api/admin/terms` 创建均仅限管理员；后者接受整数year与春/秋season，重复创建复用原条目。历史学期不改写，课程其他字段仍可编辑。默认窗口7天，默认三个等权维度：教学内容/教学方法/考核方式。
 维度数量1–10、名称唯一、正权重合计为1；不支持在已有课程中隐式更换维度。PATCH支持name/teacher_id/term/closes_at，closes_at=0立即关闭。
 发码POST /api/admin/courses/<id>/evaluation-codes，JSON为count（1–1000）与可选expires_at（不晚于课程截止）。返回codes数组，每码128位熵、32位小写十六进制，仅响应可得明文，数据库只留SHA256摘要。
 创建/转移/发码均管理员权限+CSRF，写入与审计同一事务；当前/api/courses原字段不加别名。发码不记录学生姓名或把码关联到评价记录，分发由管理员离线完成。

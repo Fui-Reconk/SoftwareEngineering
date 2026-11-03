@@ -12,7 +12,7 @@ from taces.business.timezone import SHANGHAI, shanghai_stamp
 
 ACTIONS = {"account.create": "创建账号", "account.update": "修改账号", "account.password": "修改密码",
            "auth.login": "登录", "auth.logout": "退出登录", "access.denied": "拒绝访问",
-           "course.create": "创建课程", "course.update": "修改课程", "codes.issue": "发行评价码",
+           "course.create": "创建课程", "course.update": "修改课程", "codes.issue": "发行评价码", "term.create": "创建学期",
            "statistics.publish": "发布统计", "statistics.read": "读取统计", "statistics.refused": "暂缓发布",
            "privacy.configure": "修改隐私参数", "export.csv": "导出CSV", "export.pdf": "导出PDF"}
 
@@ -95,6 +95,7 @@ class AuditService:
             for row in rows[:limit]:
                 action, _, target = row["action"].partition(":")
                 account_target = target if action in {"account.create", "account.update", "account.password"} else ""
+                term_target = target if action == "term.create" and re.fullmatch(r"(?!0000)[0-9]{4}[春秋]", target) else ""
                 account_change = None
                 if action == "account.update" and row["stat_type"]:
                     try:
@@ -108,7 +109,7 @@ class AuditService:
                 entries.append({"at": shanghai_stamp(row["ts"]),
                     "actor": row["username"] or ("系统" if row["actor"] == "system:bootstrap" else "历史账号"),
                     "actorId": row["actor"] if re.fullmatch(r"[a-f0-9]{32}", row["actor"]) else None,
-                    "action": ACTIONS.get(action, "历史操作"), "target": row["name"] or accounts.get(target, "系统"),
+                    "action": ACTIONS.get(action, "历史操作"), "target": row["name"] or term_target or accounts.get(target, "系统"),
                     "targetId": account_target if re.fullmatch(r"[a-f0-9]{32}", account_target) else None,
                     "accountChange": account_change,
                     "epsCost": row["eps_cost_micros"] / 1_000_000})

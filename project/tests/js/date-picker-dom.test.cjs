@@ -59,6 +59,21 @@ test('native date control remains available if dialog enhancement is unsupported
   assert.equal(view.trigger.hidden, true);
 });
 
+test('calendar keeps the same six-week layout when navigating between short and long months', () => {
+  const view = mount({ value: '2021-02-15' });
+  view.trigger.fire('click');
+  for (const [month, numberOfDays] of [[2, 28], [3, 31], [5, 31]]) {
+    view.dateMonth.value = String(month);
+    view.dateMonth.fire('change');
+    assert.equal(view.dateGrid.children.length, 6, `2021-${month} must leave room for six weeks`);
+    assert.ok(view.dateGrid.children.every(row => row.children.length === 7));
+    const dayButtons = view.dateGrid.children.flatMap(row => row.children.flatMap(cell => cell.children));
+    assert.equal(dayButtons.length, numberOfDays);
+    assert.equal(dayButtons[0].textContent, '1');
+    assert.equal(dayButtons.at(-1).textContent, String(numberOfDays));
+  }
+});
+
 test('confirm, cancel and clear preserve values and emit changes only when needed', () => {
   const view = mount();
   let changes = 0;
@@ -143,4 +158,23 @@ test('zoomed visual viewport constrains and repositions the picker on pan', () =
   viewport.fire('scroll');
   assert.match(view.datePickerDialog.style.left, /clamp\(128px/);
   assert.match(view.datePickerDialog.style.maxWidth, /315px/);
+});
+
+test('picker uses the available space after a short viewport grows', () => {
+  const view = mount({ value: '2021-02-15T09:05', withTime: true });
+  view.window.innerWidth = 390;
+  view.window.innerHeight = 844;
+  view.trigger.getBoundingClientRect = () => ({ left: 36, right: 356, top: 462, bottom: 502 });
+  view.trigger.fire('click');
+  // Simulate the inline size left over after the dialog was constrained by a short viewport.
+  view.datePickerDialog.style.maxHeight = '304px';
+  view.datePickerDialog.getBoundingClientRect = function () {
+    const limit = Number.parseFloat(this.style.maxHeight);
+    return { left: 36, right: 356, top: 0, bottom: 0, width: 320,
+      height: Number.isFinite(limit) ? Math.min(414, limit) : 414 };
+  };
+  view.dateMonth.value = '3';
+  view.dateMonth.fire('change');
+  assert.match(view.datePickerDialog.style.top, /clamp\(8px, 40px,/,
+    'the full-height picker should fit above the trigger instead of being clipped below it');
 });

@@ -103,6 +103,7 @@
     const visibleWidth = viewport?.width || window.innerWidth;
     const right = visibleLeft + visibleWidth;
     dialog.style.maxWidth = '';
+    dialog.style.maxHeight = '';
     const width = dialog.getBoundingClientRect().width;
     const left = Math.max(visibleLeft + margin, Math.min(target.left, right - width - margin));
     const rightLimit = viewport && visibleWidth < window.innerWidth ? `${right}px` : '100vw';
@@ -167,7 +168,8 @@
     grid.textContent = '';
     const today = new Date();
     const days = monthGrid(draft.year, draft.month);
-    const rowCount = Math.ceil((days.lastIndexOf(daysInMonth(draft.year, draft.month)) + 1) / 7);
+    // Keep every week of the six-row grid so the dialog does not jump between months.
+    const rowCount = days.length / 7;
     for (let rowIndex = 0; rowIndex < rowCount; rowIndex += 1) {
       const row = document.createElement('tr');
       for (let column = 0; column < 7; column += 1) {
